@@ -11,6 +11,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { FaCopy, FaWhatsapp, FaEnvelope } from "react-icons/fa";
 import { getSession } from "next-auth/react"
+import React from 'react';
 
 export default function AskDoubtPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -40,7 +41,8 @@ export default function AskDoubtPage() {
     const fetchSession = async () => {
       const session = await getSession()
       if (session?.user?.email) {
-        setUserEmail(session.user.email)
+        setUserEmail(session.user.email);
+        localStorage.setItem("email", session.user.email);
       } else {
         setMessages([
           { role: "bot", text: "⚠️ Please log in again. User session is missing." }
@@ -56,6 +58,15 @@ export default function AskDoubtPage() {
       const res = await fetch(`/api/get-friends?email=${userEmail}`);
       const data = await res.json();
       setFriends(data.friends);
+
+      // ✅ Load last chat after setting friends
+      const lastId = localStorage.getItem("lastChatboxId");
+      if (lastId) {
+        const last = data.friends.find(f => f.chatbox_id === lastId);
+        if (last) {
+          handleFriendSelect(last);
+        }
+      }
     };
     fetchFriends();
   }, [userEmail]);
@@ -66,14 +77,10 @@ export default function AskDoubtPage() {
       if (isAllowed && document.activeElement !== inputRef.current) {
         e.preventDefault()
         inputRef.current?.focus()
-
-        // Append the key to the input manually
         setInput((prev) => prev + e.key)
       }
     }
-
     window.addEventListener("keydown", handleGlobalKeydown)
-
     return () => {
       window.removeEventListener("keydown", handleGlobalKeydown)
     }
@@ -81,33 +88,34 @@ export default function AskDoubtPage() {
 
   useEffect(() => {
     if (!userEmail || !chatboxId) return;
-
     if (!socket.current) {
       socket.current = io("https://chatterly-backend-8dwx.onrender.com", {
         transports: ["websocket"], // ensure real-time connection
       });
     }
-
     socket.current.emit("join-room", chatboxId);
 
     socket.current.on("receive-message", (message) => {
       setMessages((prev) => [...prev, message]);
     });
-
     return () => {
       socket.current?.off("receive-message");
+      socket.current?.disconnect();
+      socket.current = null;
     };
   }, [chatboxId, userEmail]);
 
   const handleNewChat = async () => {
-    const friendEmail = prompt("Enter your friend's email to start a new chat:");
+    const searchValue = prompt("Enter your friend's email or nickname to start a new chat:");
 
-    if (!friendEmail || friendEmail === userEmail) return;
+    const userEmail = localStorage.getItem("email");
+    if (!searchValue || !userEmail) return;
 
-    // Check if chat already exists
-    const existingChat = friends.find(frnd => frnd.email === friendEmail);
+    const existingChat = friends.find(
+      frnd => frnd.email === searchValue || frnd.nickname === searchValue
+    );
     if (existingChat) {
-      handleFriendSelect(existingChat); // Open existing chat
+      handleFriendSelect(existingChat);
       return;
     }
 
@@ -115,19 +123,41 @@ export default function AskDoubtPage() {
       const res = await fetch("/api/create-chatbox", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userEmail, friendEmail }),
+        body: JSON.stringify({ userEmail, friendEmail: searchValue }),
       });
+
       const data = await res.json();
 
       if (data.success) {
         const newFriend = {
           chatbox_id: data.chatbox._id,
-          email: friendEmail,
-          nickname: null, // or let user set nickname
+          email: data.friend.email,
+          nickname: data.friend.nickname,
+          lastModified: new Date().toISOString(),
         };
 
+
+        // Add friend to user's frnd_arr
+        const response = await fetch("/api/add-friend", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userEmail,
+            friendEmail: newFriend.email,
+            chatboxId: newFriend.chatbox_id,
+          }),
+        });
+
+        const addFriendData = await response.json();
+
+        if (!response.ok || !addFriendData.success) {
+          console.error("Add friend failed:", addFriendData.message);
+          alert(addFriendData.message || "Something went wrong while adding friend.");
+          return; // exit early if add-friend failed
+        }
+
         setFriends(prev => [...prev, newFriend]);
-        handleFriendSelect(newFriend); // Open new chat
+        handleFriendSelect(newFriend);
       } else {
         alert(data.message || "Failed to create chat.");
       }
@@ -139,7 +169,7 @@ export default function AskDoubtPage() {
 
   const handleFriendSelect = async (friend) => {
     setSelectedFriend(friend);
-
+    localStorage.setItem("lastChatboxId", friend.chatbox_id);
     // Get the chatbox details using chatbox_id
     const res = await fetch(`/api/get-chatbox?chatbox_id=${friend.chatbox_id}`);
     const data = await res.json();
@@ -149,7 +179,6 @@ export default function AskDoubtPage() {
 
   const sendMessage = () => {
     if (!input.trim() || !chatboxId || !userEmail) return;
-
     const message = {
       senderEmail: userEmail,
       chatboxId,
@@ -157,20 +186,21 @@ export default function AskDoubtPage() {
     };
 
     socket.current.emit("send-message", message); // send to server
-    setMessages((prev) => [...prev, message]);
+    // setMessages((prev) => [...prev, message]);
     setInput("");
   };
 
   const handleLogout = async () => {
     try {
       await fetch("/api/logout", { method: "POST" });
+      localStorage.removeItem("lastChatboxId");
       router.push("/login"); // Or "/"
     } catch (err) {
       console.error("Logout failed", err);
     }
   };
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -204,7 +234,7 @@ export default function AskDoubtPage() {
               onClick={handleNewChat}
               className="w-full text-left px-4 py-2 mb-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-xl transition-colors"
             >
-              ➕ New Chat
+              ➕ New Friend Chat
             </button>
             {/* <Link href="/profile" className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
               <User className="w-5 h-5" />
@@ -250,9 +280,9 @@ export default function AskDoubtPage() {
                 className="flex items-center text-purple-600 hover:text-purple-700 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
-                BackDashboard
+                Back to Dashboard
               </Link>
-              <h1 className="text-2xl font-bold text-gray-800">Chat with Friend</h1>
+              <h1 className="text-2xl font-bold text-gray-800">Chat with Friends</h1>
             </div>
 
             {/* Right section: Notification + Profile */}
@@ -280,10 +310,11 @@ export default function AskDoubtPage() {
                   <div
                     className={`px-4 py-3 rounded-xl shadow-md ${msg.senderEmail === userEmail
                       ? "max-w-md bg-purple-100 text-right rounded-br-none"
-                      : "w-full md:max-w-4xl overflow-x-auto bg-blue-100 text-left rounded-bl-none"
+                      : "'bg-blue-100 text-left rounded-bl-none self-start"
                       }`}
+
                   >
-                    <div className="text-xs font-semibold mb-1">
+                     <div className="text-xs font-semibold mb-1">
                       {msg.senderEmail === userEmail ? "You" : selectedFriend?.nickname || "Friend"}
                     </div>
                     <div className="markdown-content text-sm text-gray-800 overflow-x-auto">
@@ -291,19 +322,30 @@ export default function AskDoubtPage() {
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            p: ({ children }) => <p>{children}</p>,
+                            p: ({ children }) => {
+                              const isPre = React.Children.toArray(children).some(
+                                (child) => typeof child === 'object' && child?.type === 'pre'
+                              );
+                              return isPre ? <>{children}</> : <p>{children}</p>;
+                            },
                             a: ({ href, children }) => (
                               <a href={href} style={{ color: '#6cf', textDecoration: 'underline' }}>{children}</a>
                             ),
                             li: ({ children }) => <li>{children}</li>,
                             code: ({ inline, children }) =>
                               inline ? (
-                                <code style={{ backgroundColor: '#333', padding: '2px 6px', borderRadius: '4px' }}>
+                                <code style={{
+                                  backgroundColor: '#333',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  display: 'inline-block',
+                                  textAlign: 'left',
+                                }}>
                                   {children}
                                 </code>
                               ) : (
-                                <div style={{ position: 'relative', marginBottom: '1rem' }} supresshydrationerror>
-                                  <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm">
+                                <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                                  <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm jus">
                                     <code>
                                       {typeof children === 'string'
                                         ? children
@@ -361,9 +403,11 @@ export default function AskDoubtPage() {
                               </td>
                             ),
                           }}
-                          supresshydrationerror>
+                          suppressHydrationWarning
+                        >
                           {msg.text}
                         </ReactMarkdown>
+  
                       </div>
                       {msg.role === "bot" && (
                         <div className="flex justify-end mt-2">
@@ -399,7 +443,12 @@ export default function AskDoubtPage() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      sendMessage();  // only sends once
+                    }
+                  }}
                   placeholder="Type your message..."
                   className="flex-1 px-4 py-2 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getSession } from "@/lib/auth"
+import { getSession } from "next-auth/react"
 import { connectToDatabase } from "@/lib/mongodb"
 import { NextResponse } from "next/server"
 

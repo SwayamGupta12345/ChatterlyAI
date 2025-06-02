@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSession } from "@next-auth/react"
+import { getSession } from "next-auth/react"
 // import { getSession } from "@/lib/auth" // Uncomment if using a custom auth function
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"

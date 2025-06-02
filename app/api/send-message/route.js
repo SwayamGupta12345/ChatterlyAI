@@ -12,11 +12,18 @@ export async function POST(req) {
     timestamp: new Date(),
   };
 
-  const result = await db.collection("chatboxes").findOneAndUpdate(
+  const result = await db.collection("chatboxes").updateOne(
     { _id: new ObjectId(chatboxId) },
-    { $push: { messages: message } },
-    { returnDocument: "after" }
-  );
+    {
+      $push: { messages: newMessage },
+      $set: { lastModified: new Date() }
+    });
+
+  // const result = await db.collection("chatboxes").findOneAndUpdate(
+  //   { _id: new ObjectId(chatboxId) },
+  //   { $push: { messages: message } },
+  //   { returnDocument: "after" }
+  // );
 
   return NextResponse.json({ message });
 }

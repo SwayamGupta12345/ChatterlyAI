@@ -260,7 +260,7 @@ export default function AskDoubtPage() {
   }, [messages]);
 
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <div className="min-h-screen flex bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 relative">
         {/* Sidebar */}
         <div className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>

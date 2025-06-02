@@ -77,6 +77,21 @@ export default function AskDoubtPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!chatboxId) return;
+
+    const interval = setInterval(async () => {
+      const res = await fetch(`/api/get-chatbox?chatbox_id=${chatboxId}`);
+      const data = await res.json();
+
+      if (data.chatbox?.messages) {
+        setMessages(data.chatbox.messages);
+      }
+    }, 1000); // Poll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [chatboxId]);
+
   const handleNewChat = async () => {
     const friendEmail = prompt("Enter your friend's email to start a new chat:");
 
@@ -206,7 +221,7 @@ export default function AskDoubtPage() {
                   : "hover:bg-gray-100 text-gray-700"
                   }`}
               >
-                {frnd.nickname || frnd.email}
+                <span className="block truncate max-w-full">{frnd.nickname || frnd.email}</span>
               </button>
             ))}
           </nav>

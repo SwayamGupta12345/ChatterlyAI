@@ -19,6 +19,7 @@ export async function GET(req) {
       chatbox_id: chat._id,
       email: friendEmail,
       nickname: null,
+      lastModified:chat.lastModified,
     };
   });
 

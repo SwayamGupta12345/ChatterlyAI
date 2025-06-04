@@ -4,11 +4,9 @@ import { useState, useEffect, useRef } from "react"
 import { BookOpen, Lightbulb, Menu, X, User, LogOut, ArrowLeft, Send, LayoutDashboard, MessageCircleMore, Bell } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useLayoutEffect } from "react"
-import axios from "axios"
 import { io } from "socket.io-client";
 import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm" 
+import remarkGfm from "remark-gfm"
 import { FaCopy, FaWhatsapp, FaEnvelope } from "react-icons/fa";
 import { getSession } from "next-auth/react"
 import React from 'react';
@@ -28,6 +26,8 @@ export default function AskDoubtPage() {
   const inputRef = useRef(null)
   const socket = useRef(null);
   const router = useRouter()
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingText, setEditingText] = useState("");
   const [updatedChatboxId, setUpdatedChatboxId] = useState(null);
   const handleCopy = (text) => navigator.clipboard.writeText(text);
   const sendToWhatsApp = (text) => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
@@ -193,12 +193,27 @@ export default function AskDoubtPage() {
   const handleFriendSelect = async (friend) => {
     setSelectedFriend(friend);
     localStorage.setItem("lastChatboxId", friend.chatbox_id);
-    // Get the chatbox details using chatbox_id
+
+    // Step 1: Fetch chatbox details
     const res = await fetch(`/api/get-chatbox?chatbox_id=${friend.chatbox_id}`);
     const data = await res.json();
+
+    const messageIds = data.chatbox.messages;
+
+    // Step 2: Fetch full message objects using the message ObjectIds
+    const msgRes = await fetch("/api/get-messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageIds }),
+    });
+
+    const { messages: fullMessages } = await msgRes.json();
+
+    // Step 3: Update state
     setChatboxId(data.chatbox._id);
-    setMessages(data.chatbox.messages); // assuming populated messages
+    setMessages(fullMessages); // fullMessages is an array of complete message objects
   };
+
 
   const sendMessage = () => {
     if (!input.trim() || !chatboxId || !userEmail) return;
@@ -358,6 +373,22 @@ export default function AskDoubtPage() {
                     <div className="text-xs font-semibold mb-1">
                       {msg.senderEmail === userEmail ? "You" : selectedFriend?.nickname || "Friend"}
                     </div>
+                    {msg.senderEmail === userEmail && (
+                      <div className="flex justify-end gap-2 mt-1 text-xs">
+                        <button
+                          onClick={() => handleEditMessage(idx)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMessage(idx)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                     <div className="markdown-content text-sm text-gray-800 max-w-[90vw] md:max-w-md overflow-x-auto whitespace-pre-wrap break-words">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}

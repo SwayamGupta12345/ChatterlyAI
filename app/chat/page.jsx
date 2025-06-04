@@ -73,20 +73,20 @@ export default function AskDoubtPage() {
     fetchFriends();
   }, [userEmail]);
 
-  useEffect(() => {
-    const handleGlobalKeydown = (e) => {
-      const isAllowed = /^[a-zA-Z0-9 ]$/.test(e.key)
-      if (isAllowed && document.activeElement !== inputRef.current) {
-        e.preventDefault()
-        inputRef.current?.focus()
-        setInput((prev) => prev + e.key)
-      }
-    }
-    window.addEventListener("keydown", handleGlobalKeydown)
-    return () => {
-      window.removeEventListener("keydown", handleGlobalKeydown)
-    }
-  }, [])
+  // useEffect(() => {
+  //   const handleGlobalKeydown = (e) => {
+  //     const isAllowed = /^[a-zA-Z0-9 ]$/.test(e.key)
+  //     if (isAllowed && document.activeElement !== inputRef.current) {
+  //       e.preventDefault()
+  //       inputRef.current?.focus()
+  //       setInput((prev) => prev + e.key)
+  //     }
+  //   }
+  //   window.addEventListener("keydown", handleGlobalKeydown)
+  //   return () => {
+  //     window.removeEventListener("keydown", handleGlobalKeydown)
+  //   }
+  // }, [])
 
   useEffect(() => {
     if (!userEmail || !chatboxId) return;
@@ -96,6 +96,20 @@ export default function AskDoubtPage() {
       });
     }
     socket.current.emit("join-room", chatboxId);
+
+    // 🟢 Message edited
+    socket.current.on("message-edited", ({ messageId, newText }) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === messageId ? { ...msg, text: newText } : msg
+        )
+      );
+    });
+
+    // 🔴 Message deleted
+    socket.current.on("message-deleted", ({ messageId }) => {
+      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+    });
 
     socket.current.on("receive-message", (message) => {
       setMessages((prev) => [...prev, message]);
@@ -115,10 +129,13 @@ export default function AskDoubtPage() {
 
         return sorted;
       });
+
     });
 
     return () => {
       socket.current?.off("receive-message");
+      socket.current?.off("message-deleted");
+      socket.current?.off("message-edited");
       socket.current?.disconnect();
       socket.current = null;
     };
@@ -170,7 +187,6 @@ export default function AskDoubtPage() {
         const addFriendData = await response.json();
 
         if (!response.ok || !addFriendData.success) {
-          console.error("Add friend failed:", addFriendData.message);
           alert(addFriendData.message || "Something went wrong while adding friend.");
           return; // exit early if add-friend failed
         }
@@ -185,7 +201,6 @@ export default function AskDoubtPage() {
         alert(data.message || "Failed to create chat.");
       }
     } catch (err) {
-      console.error("Error creating chat:", err);
       alert("Something went wrong.");
     }
   };
@@ -228,10 +243,75 @@ export default function AskDoubtPage() {
     setInput("");
   };
 
+  const handleEditMessage = (index) => {
+    setEditingIndex(index);
+    setEditingText(messages[index].text);
+  };
+
+  const confirmEditMessage = async () => {
+    const updatedMsg = messages[editingIndex];
+
+    const res = await fetch("/api/edit-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messageId: updatedMsg._id,
+        newText: editingText,
+      }),
+
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      const newMessages = [...messages];
+      newMessages[editingIndex].text = editingText;
+      setMessages(newMessages);
+      setEditingIndex(null);
+      setEditingText("");
+
+      // ✅ Emit socket event to update other user
+      socket.current?.emit("edit-message", {
+        messageId: updatedMsg._id,
+        newText: editingText,
+        chatboxId, // required for server to emit to room
+      });
+    } else {
+      alert("Failed to edit message.");
+    }
+  };
+
+  const handleDeleteMessage = async (index) => {
+    const msg = messages[index];
+    const res = await fetch("/api/delete-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messageId: msg._id,
+        chatboxId: chatboxId,
+      }),
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      setMessages((prev) => prev.filter((_, i) => i !== index));
+
+      // ✅ Emit socket event to update other user
+      socket.current?.emit("delete-message", {
+        messageId: msg._id,
+        chatboxId,
+      });
+    } else {
+      alert("Failed to delete message.");
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await fetch("/api/logout", { method: "POST" });
       localStorage.removeItem("lastChatboxId");
+      localStorage.removeItem("email");
       router.push("/login"); // Or "/"
     } catch (err) {
       console.error("Logout failed", err);
@@ -370,8 +450,8 @@ export default function AskDoubtPage() {
                       : "bg-blue-100 text-left rounded-bl-none self-start"
                       }`}
                   >
-                    <div className="text-xs font-semibold mb-1">
-                      {msg.senderEmail === userEmail ? "You" : selectedFriend?.nickname || "Friend"}
+                    <div className="text-xs font-semibold text-gray-600 mb-1">
+                      {msg.senderEmail === userEmail ?   "You" : selectedFriend?.nickname || "Friend"}
                     </div>
                     {msg.senderEmail === userEmail && (
                       <div className="flex justify-end gap-2 mt-1 text-xs">
@@ -390,89 +470,115 @@ export default function AskDoubtPage() {
                       </div>
                     )}
                     <div className="markdown-content text-sm text-gray-800 max-w-[90vw] md:max-w-md overflow-x-auto whitespace-pre-wrap break-words">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          p: ({ children }) => {
-                            const isPre = React.Children.toArray(children).some(
-                              (child) => typeof child === 'object' && child?.type === 'pre'
-                            );
-                            return isPre ? <>{children}</> : <p>{children}</p>;
-                          },
-                          a: ({ href, children }) => (
-                            <a href={href} style={{ color: '#6cf', textDecoration: 'underline' }}>{children}</a>
-                          ),
-                          li: ({ children }) => <li>{children}</li>,
-                          code: ({ inline, children }) =>
-                            inline ? (
-                              <code style={{ backgroundColor: '#333', padding: '2px 6px', borderRadius: '4px' }}>
-                                {children}
-                              </code>
-                            ) : (
-                              <div style={{ position: 'relative', marginBottom: '1rem' }}>
-                                <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm max-w-full">
-                                  <code>
-                                    {typeof children === 'string'
-                                      ? children
-                                      : Array.isArray(children)
-                                        ? children.join('')
-                                        : ''}
-                                  </code>
-                                </pre>
-                                <div style={{ position: 'absolute', top: 6, right: 8, display: 'flex', gap: '8px' }}>
-                                  <button
-                                    onClick={() => handleCopy(Array.isArray(children) ? children.join('') : children)}
-                                    title="Copy"
-                                    className="action-button"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                                  >
-                                    <FaCopy />
-                                  </button>
-                                  <button
-                                    onClick={() => sendToWhatsApp(children)}
-                                    title="Share via WhatsApp"
-                                    className="action-button"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                                  >
-                                    <FaWhatsapp />
-                                  </button>
-                                  <button
-                                    onClick={() => sendToGmail(children)}
-                                    title="Send via Email"
-                                    className="action-button"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                                  >
-                                    <FaEnvelope />
-                                  </button>
+                      {editingIndex === idx ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full p-2 border rounded"
+                            rows={2}
+                          />
+                          <div className="flex justify-end gap-2 text-sm">
+                            <button
+                              onClick={confirmEditMessage}
+                              className="text-green-600 hover:underline"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingIndex(null);
+                                setEditingText("");
+                              }}
+                              className="text-gray-600 hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => {
+                              const isPre = React.Children.toArray(children).some(
+                                (child) => typeof child === 'object' && child?.type === 'pre'
+                              );
+                              return isPre ? <>{children}</> : <p>{children}</p>;
+                            },
+                            a: ({ href, children }) => (
+                              <a href={href} style={{ color: '#6cf', textDecoration: 'underline' }}>{children}</a>
+                            ),
+                            li: ({ children }) => <li>{children}</li>,
+                            code: ({ inline, children }) =>
+                              inline ? (
+                                <code style={{ backgroundColor: '#333', padding: '2px 6px', borderRadius: '4px' }}>
+                                  {children}
+                                </code>
+                              ) : (
+                                <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                                  <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm max-w-full">
+                                    <code>
+                                      {typeof children === 'string'
+                                        ? children
+                                        : Array.isArray(children)
+                                          ? children.join('')
+                                          : ''}
+                                    </code>
+                                  </pre>
+                                  <div style={{ position: 'absolute', top: 6, right: 8, display: 'flex', gap: '8px' }}>
+                                    <button
+                                      onClick={() => handleCopy(Array.isArray(children) ? children.join('') : children)}
+                                      title="Copy"
+                                      className="action-button"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                    >
+                                      <FaCopy />
+                                    </button>
+                                    <button
+                                      onClick={() => sendToWhatsApp(children)}
+                                      title="Share via WhatsApp"
+                                      className="action-button"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                    >
+                                      <FaWhatsapp />
+                                    </button>
+                                    <button
+                                      onClick={() => sendToGmail(children)}
+                                      title="Send via Email"
+                                      className="action-button"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                    >
+                                      <FaEnvelope />
+                                    </button>
+                                  </div>
                                 </div>
+                              ),
+                            table: ({ children }) => (
+                              <div style={{ overflowX: 'auto' }}>
+                                <table className="min-w-[500px] table-auto border border-gray-400 text-sm">
+                                  {children}
+                                </table>
                               </div>
                             ),
-                          table: ({ children }) => (
-                            <div style={{ overflowX: 'auto' }}>
-                              <table className="min-w-[500px] table-auto border border-gray-400 text-sm">
+                            thead: ({ children }) => <thead style={{ backgroundColor: '#e5e7eb' }}>{children}</thead>,
+                            tbody: ({ children }) => <tbody>{children}</tbody>,
+                            tr: ({ children }) => <tr style={{ borderBottom: '1px solid #888' }}>{children}</tr>,
+                            th: ({ children }) => (
+                              <th className="border border-gray-400 bg-gray-200 px-4 py-2 text-left font-medium">
                                 {children}
-                              </table>
-                            </div>
-                          ),
-                          thead: ({ children }) => <thead style={{ backgroundColor: '#e5e7eb' }}>{children}</thead>,
-                          tbody: ({ children }) => <tbody>{children}</tbody>,
-                          tr: ({ children }) => <tr style={{ borderBottom: '1px solid #888' }}>{children}</tr>,
-                          th: ({ children }) => (
-                            <th className="border border-gray-400 bg-gray-200 px-4 py-2 text-left font-medium">
-                              {children}
-                            </th>
-                          ),
-                          td: ({ children }) => (
-                            <td className="border border-gray-300 px-4 py-2 text-left">
-                              {children}
-                            </td>
-                          ),
-                        }}
-                        suppressHydrationWarning
-                      >
-                        {msg.text}
-                      </ReactMarkdown>
-
+                              </th>
+                            ),
+                            td: ({ children }) => (
+                              <td className="border border-gray-300 px-4 py-2 text-left">
+                                {children}
+                              </td>
+                            ),
+                          }}
+                          suppressHydrationWarning
+                        >
+                          {msg.text}
+                        </ReactMarkdown>)}
                     </div>
                     {msg.role === "bot" && (
                       <div className="flex justify-end mt-2">

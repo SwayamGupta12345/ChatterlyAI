@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function Dashboard() {
-  const [subjects, setSubjects] = useState([])
+  const [subjects, setSubjects] = useState([]) 
   const [isLoading, setIsLoading] = useState(true)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [searchFriend, setSearchFriend] = useState("")

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
-    email: "",
+    email: "", 
     password: "",
     confirmPassword: "",
   })

@@ -9,7 +9,7 @@ export const metadata = {
   title: "Chatterly - Lets chat with friends and AI altogether",
   description:
     "Join thousands of people who are revolutionizing their Working experience with collaborative AI assistance with friends.",
-};
+}; 
 
 export default function RootLayout({ children }) {
   return (

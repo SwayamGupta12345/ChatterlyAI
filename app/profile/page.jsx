@@ -8,7 +8,7 @@ import { Lock } from "lucide-react"
 
 export default function ProfilePage() {
   const [formData, setFormData] = useState({
-    name: "",
+    name: "", 
     email: "",
     nickname: "",
     pass: "",

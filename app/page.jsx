@@ -8,7 +8,7 @@ export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
 
-  const features = [
+  const features = [ 
     {
       icon: Lightbulb,
       title: "Better Responses",

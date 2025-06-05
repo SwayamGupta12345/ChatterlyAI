@@ -8,6 +8,8 @@ import { io } from "socket.io-client";
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { FaCopy, FaWhatsapp, FaEnvelope } from "react-icons/fa";
+import { MdDelete } from "react-icons/md";
+import { RiEditLine } from "react-icons/ri";
 import { getSession } from "next-auth/react"
 import React from 'react';
 import { motion, AnimatePresence } from "framer-motion";
@@ -229,7 +231,6 @@ export default function AskDoubtPage() {
     setMessages(fullMessages); // fullMessages is an array of complete message objects
   };
 
-
   const sendMessage = () => {
     if (!input.trim() || !chatboxId || !userEmail) return;
     const message = {
@@ -251,7 +252,7 @@ export default function AskDoubtPage() {
   const confirmEditMessage = async () => {
     const updatedMsg = messages[editingIndex];
 
-    const res = await fetch("/api/edit-message", {
+    const res = await fetch("/api/edit-chat-message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -283,7 +284,7 @@ export default function AskDoubtPage() {
 
   const handleDeleteMessage = async (index) => {
     const msg = messages[index];
-    const res = await fetch("/api/delete-message", {
+    const res = await fetch("/api/delete-chat-message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -451,24 +452,9 @@ export default function AskDoubtPage() {
                       }`}
                   >
                     <div className="text-xs font-semibold text-gray-600 mb-1">
-                      {msg.senderEmail === userEmail ?   "You" : selectedFriend?.nickname || "Friend"}
+                      {msg.senderEmail === userEmail ? "You" : selectedFriend?.nickname || "Friend"}
                     </div>
-                    {msg.senderEmail === userEmail && (
-                      <div className="flex justify-end gap-2 mt-1 text-xs">
-                        <button
-                          onClick={() => handleEditMessage(idx)}
-                          className="text-blue-600 hover:underline"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMessage(idx)}
-                          className="text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
+
                     <div className="markdown-content text-sm text-gray-800 max-w-[90vw] md:max-w-md overflow-x-auto whitespace-pre-wrap break-words">
                       {editingIndex === idx ? (
                         <div className="space-y-2">
@@ -578,17 +564,35 @@ export default function AskDoubtPage() {
                           suppressHydrationWarning
                         >
                           {msg.text}
-                        </ReactMarkdown>)}
+                        </ReactMarkdown>
+                      )}
                     </div>
-                    {msg.role === "bot" && (
-                      <div className="flex justify-end mt-2">
+
+                    {msg.senderEmail === userEmail && (
+                      <div className="flex gap-4 justify-end items-center mt-2 text-xs text-gray-700">
+                        <button
+                          onClick={() => handleEditMessage(idx)}
+                          title="Edit message"
+                          className="flex items-center gap-1 text-blue-600 hover:underline"
+                        >
+                          <RiEditLine />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMessage(idx)}
+                          title="Delete message"
+                          className="flex items-center gap-1 text-red-600 hover:underline"
+                        >
+                          <MdDelete />
+                          <span>Delete</span>
+                        </button>
                         <button
                           onClick={() => handleCopy(msg.text)}
-                          title="Copy bot message"
-                          className="flex items-center gap-1 text-sm text-gray-600 hover:text-purple-600 transition"
+                          title="Copy message"
+                          className="flex items-center gap-1 text-gray-600 hover:text-purple-600 transition"
                         >
                           <FaCopy />
-                          Copy
+                          <span>Copy</span>
                         </button>
                       </div>
                     )}

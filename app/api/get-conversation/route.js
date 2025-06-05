@@ -27,8 +27,14 @@ export async function GET(req) {
         const aiMsg = await db.collection('messages').findOne({ _id: new ObjectId(aiResponseId) });
 
         return {
-          user: userMsg?.text || "[Missing User Message]",
-          ai: aiMsg?.text || "[Missing AI Response]",
+          user: {
+            id: userMsg?._id?.toString() || null,
+            text: userMsg?.text || "[Missing User Message]",
+          },
+        ai: {
+            id: aiMsg?._id?.toString() || null,
+            text: aiMsg?.text || "[Missing AI Response]",
+          }
         };
       })
     );

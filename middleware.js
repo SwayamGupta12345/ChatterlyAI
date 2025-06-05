@@ -1,25 +1,32 @@
-// middleware.js
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 export async function middleware(request) {
-  const token = request.cookies.get("auth_token")?.value;
+  const jwtToken = request.cookies.get("auth_token")?.value;
+  const nextAuthToken = request.cookies.get("next-auth.session-token")?.value;
 
-  // If no token, redirect to login
-  if (!token) {
-    return NextResponse.redirect(new URL("/", request.url));
+  const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+
+  // 1️⃣ If you have your custom JWT
+  if (jwtToken) {
+    try {
+      await jwtVerify(jwtToken, secret);
+      return NextResponse.next();
+    } catch (err) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
 
-  try {
-    await jwtVerify(token, new TextEncoder().encode(process.env.JWT_SECRET));
-    return NextResponse.next(); // Token valid, proceed
-  } catch (err) {
-    // Token invalid or expired
-    return NextResponse.redirect(new URL("/", request.url));
+  // 2️⃣ If you're logged in with NextAuth (Google etc.)
+  if (nextAuthToken) {
+    // Token exists, trust NextAuth
+    return NextResponse.next();
   }
+
+  // 3️⃣ Otherwise not authenticated
+  return NextResponse.redirect(new URL("/", request.url));
 }
 
-// Apply this middleware to specific paths
 export const config = {
-  matcher: ["/dashboard", "/chat", "/ask-doubt", "/profile"], // secure pages
+  matcher: ["/dashboard", "/chat", "/ask-doubt", "/profile"],
 };

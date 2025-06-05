@@ -17,6 +17,8 @@ import {
   Share,
   Lock,
 } from "lucide-react";
+import { MdDelete } from "react-icons/md";
+import { RiEditLine } from "react-icons/ri";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLayoutEffect, Suspense } from "react";
@@ -39,7 +41,8 @@ export default function AskDoubtClient() {
   const [userEmail, setUserEmail] = useState("");
   const [user_ai_chats, setUser_ai_chats] = useState([]);
   const [showShare, setShowShare] = useState(false);
-  //
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingText, setEditingText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
@@ -124,8 +127,16 @@ export default function AskDoubtClient() {
         const data = await res.json();
 
         const formatted = data.messages.flatMap((pair) => [
-          { text: pair.user, role: "user" },
-          { text: pair.ai, role: "ai" },
+          {
+            id: pair.user?.id || null,
+            text: pair.user?.text || "[Missing User Message]",
+            role: "user",
+          },
+          {
+            id: pair.ai?.id || null,
+            text: pair.ai?.text || "[Missing AI Response]",
+            role: "ai",
+          },
         ]);
 
         setMessages(
@@ -141,6 +152,7 @@ export default function AskDoubtClient() {
 
     fetchConversation();
   }, [convoId]);
+
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -265,6 +277,50 @@ export default function AskDoubtClient() {
       alert(err.message || "Something went wrong");
     }
   };
+  const handleEditMessage = (id) => {
+  const msg = messages.find((m) => m.id === id); // or m._id depending on your data shape
+  if (!msg) return;
+
+  setEditingIndex(id); // Now storing the actual ID
+  setEditingText(msg.text);
+};
+
+
+  const confirmEditMessage = async () => {
+  if (!editingText.trim()) return;
+
+  setMessages((prev) =>
+    prev.map((msg) =>
+      msg.id === editingIndex ? { ...msg, text: editingText } : msg
+    )
+  );
+
+  await fetch('/api/edit-ai-message', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: editingIndex, // this is the actual message ID
+      text: editingText,
+    }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  setEditingIndex(null);
+  setEditingText("");
+};
+
+  const handleDeleteMessage = async (id) => {
+  setMessages((prev) => prev.filter((msg) => msg.id !== id));
+
+  await fetch(`/api/delete-ai-message`, {
+    method: 'POST',
+    body: JSON.stringify({ id }),
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
 
   const handleLogout = async () => {
     try {
@@ -284,9 +340,8 @@ export default function AskDoubtClient() {
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 relative">
         {/* Sidebar */}
         <div
-          className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0`}
+          className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0`}
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-8">
@@ -455,6 +510,7 @@ export default function AskDoubtClient() {
                   onChange={(e) => setShareMessage(e.target.value)}
                   placeholder="Message"
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm mb-4"
+
                   rows={3}
                 />
 
@@ -478,7 +534,7 @@ export default function AskDoubtClient() {
                   <button
                     onClick={handleSendShare}
                     className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                    // disabled={!selectedUser}
+                  // disabled={!selectedUser}
                   >
                     Send
                   </button>
@@ -497,182 +553,212 @@ export default function AskDoubtClient() {
           <main className="flex-1 relative overflow-x-hidden">
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 pb-32">
-                {messages.map((msg, idx) => (
+                {messages.map((msg) => (
                   <div
-                    key={idx}
-                    className={`flex ${
-                      msg.role === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    key={msg.id}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"
+                      }`}
                   >
                     <div
-                      className={`px-4 py-3 rounded-xl shadow-md break-words ${
-                        msg.role === "user"
-                          ? "bg-purple-100 text-right rounded-br-none self-end  max-w-[70%] sm:max-w-md"
-                          : "bg-blue-100 text-left rounded-bl-none self-start max-w-[90%] sm:max-w-2xl overflow-x-auto"
-                      }`}
+                      className={`px-4 py-3 rounded-xl shadow-md break-words ${msg.role === "user"
+                        ? "bg-purple-100 text-right rounded-br-none self-end  max-w-[70%] sm:max-w-md"
+                        : "bg-blue-100 text-left rounded-bl-none self-start max-w-[90%] sm:max-w-2xl overflow-x-auto"
+                        }`}
                     >
                       <div className="text-xs font-semibold mb-1">
                         {msg.role === "user" ? "You" : "Bot"}
                       </div>
+
                       <div className="markdown-content text-sm text-gray-800 overflow-x-hidden">
                         <div className="min-w-full">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              p: ({ children }) => <p>{children}</p>,
-                              a: ({ href, children }) => (
-                                <a
-                                  href={href}
-                                  style={{
-                                    color: "#6cf",
-                                    textDecoration: "underline",
-                                  }}
+                          {editingIndex === msg.id ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="w-full p-2 border rounded"
+                                rows={2}
+                              />
+                              <div className="flex justify-end gap-2 text-sm">
+                                <button
+                                  onClick={confirmEditMessage}
+                                  className="text-green-600 hover:underline"
                                 >
-                                  {children}
-                                </a>
-                              ),
-                              li: ({ children }) => <li>{children}</li>,
-                              code: ({ inline, children }) =>
-                                inline ? (
-                                  <code
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingIndex(null);
+                                    setEditingText("");
+                                  }}
+                                  className="text-gray-600 hover:underline"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                p: ({ children }) => <p>{children}</p>,
+                                a: ({ href, children }) => (
+                                  <a
+                                    href={href}
                                     style={{
-                                      backgroundColor: "#333",
-                                      padding: "2px 6px",
-                                      borderRadius: "4px",
+                                      color: "#6cf",
+                                      textDecoration: "underline",
                                     }}
                                   >
                                     {children}
-                                  </code>
-                                ) : (
-                                  <div
-                                    style={{
-                                      position: "relative",
-                                      marginBottom: "1rem",
-                                    }}
-                                  >
-                                    <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm">
-                                      <code>
-                                        {typeof children === "string"
-                                          ? children
-                                          : Array.isArray(children)
-                                          ? children.join("")
-                                          : ""}
-                                      </code>
-                                    </pre>
-                                    <div
+                                  </a>
+                                ),
+                                li: ({ children }) => <li>{children}</li>,
+                                code: ({ inline, children }) =>
+                                  inline ? (
+                                    <code
                                       style={{
-                                        position: "absolute",
-                                        top: 6,
-                                        right: 8,
-                                        display: "flex",
-                                        gap: "8px",
+                                        backgroundColor: "#333",
+                                        padding: "2px 6px",
+                                        borderRadius: "4px",
                                       }}
                                     >
-                                      <button
-                                        onClick={() =>
-                                          handleCopy(
-                                            Array.isArray(children)
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <div
+                                      style={{
+                                        position: "relative",
+                                        marginBottom: "1rem",
+                                      }}
+                                    >
+                                      <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm">
+                                        <code>
+                                          {typeof children === "string"
+                                            ? children
+                                            : Array.isArray(children)
                                               ? children.join("")
-                                              : children
-                                          )
-                                        }
-                                        title="Copy"
-                                        className="action-button"
+                                              : ""}
+                                        </code>
+                                      </pre>
+                                      <div
                                         style={{
-                                          background: "none",
-                                          color: "white",
-                                          border: "none",
-                                          cursor: "pointer",
+                                          position: "absolute",
+                                          top: 6,
+                                          right: 8,
+                                          display: "flex",
+                                          gap: "8px",
                                         }}
                                       >
-                                        <FaCopy />
-                                      </button>
-                                      <button
-                                        onClick={() => sendToWhatsApp(children)}
-                                        title="Share via WhatsApp"
-                                        className="action-button"
-                                        style={{
-                                          background: "none",
-                                          color: "white",
-                                          border: "none",
-                                          cursor: "pointer",
-                                        }}
-                                      >
-                                        <FaWhatsapp />
-                                      </button>
-                                      <button
-                                        onClick={() => sendToGmail(children)}
-                                        title="Send via Email"
-                                        className="action-button"
-                                        style={{
-                                          background: "none",
-                                          color: "white",
-                                          border: "none",
-                                          cursor: "pointer",
-                                        }}
-                                      >
-                                        <FaEnvelope />
-                                      </button>
+                                        <button
+                                          onClick={() =>
+                                            handleCopy(
+                                              Array.isArray(children)
+                                                ? children.join("")
+                                                : children
+                                            )
+                                          }
+                                          title="Copy"
+                                          className="action-button"
+                                          style={{
+                                            background: "none",
+                                            color: "white",
+                                            border: "none",
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          <FaCopy />
+                                        </button>
+                                        <button
+                                          onClick={() => sendToWhatsApp(children)}
+                                          title="Share via WhatsApp"
+                                          className="action-button"
+                                          style={{
+                                            background: "none",
+                                            color: "white",
+                                            border: "none",
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          <FaWhatsapp />
+                                        </button>
+                                        <button
+                                          onClick={() => sendToGmail(children)}
+                                          title="Send via Email"
+                                          className="action-button"
+                                          style={{
+                                            background: "none",
+                                            color: "white",
+                                            border: "none",
+                                            cursor: "pointer",
+                                          }}
+                                        >
+                                          <FaEnvelope />
+                                        </button>
+                                      </div>
                                     </div>
+                                  ),
+                                table: ({ children }) => (
+                                  <div style={{ overflowX: "auto" }}>
+                                    <table className="min-w-[500px] table-auto border border-gray-400 text-sm">
+                                      {children}
+                                    </table>
                                   </div>
                                 ),
-                              table: ({ children }) => (
-                                <div style={{ overflowX: "auto" }}>
-                                  <table className="min-w-[500px] table-auto border border-gray-400 text-sm">
+                                thead: ({ children }) => (
+                                  <thead style={{ backgroundColor: "#e5e7eb" }}>
                                     {children}
-                                  </table>
-                                </div>
-                              ),
-                              thead: ({ children }) => (
-                                <thead style={{ backgroundColor: "#e5e7eb" }}>
-                                  {children}
-                                </thead>
-                              ),
-                              tbody: ({ children }) => (
-                                <tbody>{children}</tbody>
-                              ),
-                              tr: ({ children }) => (
-                                <tr style={{ borderBottom: "1px solid #888" }}>
-                                  {children}
-                                </tr>
-                              ),
-                              th: ({ children }) => (
-                                <th className="border border-gray-400 bg-gray-200 px-4 py-2 text-left font-medium">
-                                  {children}
-                                </th>
-                              ),
-                              td: ({ children }) => (
-                                <td className="border border-gray-300 px-4 py-2 text-left">
-                                  {children}
-                                </td>
-                              ),
-                            }}
-                            supresshydration
-                          >
-                            {msg.text}
-                          </ReactMarkdown>
-                        </div>
-                        {/* {msg.role === "bot" && (
-                          <div className="flex justify-end mt-2">
-                            <button
-                              onClick={() => handleCopy(msg.text)}
-                              title="Copy bot message"
-                              className="flex items-center gap-1 text-sm text-gray-600 hover:text-purple-600 transition"
+                                  </thead>
+                                ),
+                                tbody: ({ children }) => (
+                                  <tbody>{children}</tbody>
+                                ),
+                                tr: ({ children }) => (
+                                  <tr style={{ borderBottom: "1px solid #888" }}>
+                                    {children}
+                                  </tr>
+                                ),
+                                th: ({ children }) => (
+                                  <th className="border border-gray-400 bg-gray-200 px-4 py-2 text-left font-medium">
+                                    {children}
+                                  </th>
+                                ),
+                                td: ({ children }) => (
+                                  <td className="border border-gray-300 px-4 py-2 text-left">
+                                    {children}
+                                  </td>
+                                ),
+                              }}
+                              supresshydration
                             >
-                              <FaCopy />
-                              Copy
+                              {msg.text}
+                            </ReactMarkdown>
+                          )}</div>
+                        {msg.text && (
+                          <div className="flex gap-4 justify-end items-center mt-2 text-xs text-gray-700">
+                            <button
+                              onClick={() => handleEditMessage(msg.id)}
+                              title="Edit message"
+                              className="flex items-center gap-1 text-blue-600 hover:underline"
+                            >
+                              <RiEditLine />
+                              <span>Edit</span>
                             </button>
-                          </div>
-                        )} */}
-                        {msg.text && msg.role !== "user" && (
-                          <div className="flex justify-end mt-2">
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              title="Delete message"
+                              className="flex items-center gap-1 text-red-600 hover:underline"
+                            >
+                              <MdDelete />
+                              <span>Delete</span>
+                            </button>
                             <button
                               onClick={() => handleCopy(msg.text)}
-                              title="Copy bot message"
-                              className="flex items-center gap-1 text-sm text-gray-600 hover:text-purple-600 transition"
+                              title="Copy message"
+                              className="flex items-center gap-1 text-gray-600 hover:text-purple-600 transition"
                             >
                               <FaCopy />
-                              Copy
+                              <span>Copy</span>
                             </button>
                           </div>
                         )}

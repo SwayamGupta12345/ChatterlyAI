@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ChevronRight, BookOpen, Lightbulb, Users, MessageCircle, Star, Menu, X, Github, Linkedin, Mail } from "lucide-react"
+import { FiGithub, FiLinkedin  } from "react-icons/fi";
 import Link from "next/link"
 
 export default function LandingPage() {
@@ -329,7 +330,7 @@ export default function LandingPage() {
 
                 <div className="flex items-center space-x-4 mb-4">
                   <img
-                    src="https://your-image-url.com/swayam.jpg"
+                    src="./swayam.jpg"
                     alt="Swayam Gupta"
                     className="w-12 h-12 rounded-full border-2 border-purple-500"
                   />
@@ -342,20 +343,20 @@ export default function LandingPage() {
                         rel="noopener noreferrer"
                         className="flex items-center hover:text-white transition-colors"
                       >
-                        <Github className="w-4 h-4 mr-1" />
+                        <FiGithub className="w-4 h-4 mr-1" />
                         GitHub
                       </a>
                       <a
-                        href="https://linkedin.com/in/swayamgupta"
+                        href="https://www.linkedin.com/in/swayamgupta12"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center hover:text-white transition-colors"
                       >
-                        <Linkedin className="w-4 h-4 mr-1" />
+                        <FiLinkedin className="w-4 h-4 mr-1" />
                         LinkedIn
                       </a>
                       <a
-                        href="mailto:swayam@example.com"
+                        href="https://mail.google.com/mail/u/0/?view=cm&fs=1&to=swayamsam2005@gmail.com" target="_blank"
                         className="flex items-center hover:text-white transition-colors"
                       >
                         <Mail className="w-4 h-4 mr-1" />
@@ -367,33 +368,33 @@ export default function LandingPage() {
 
                 <div className="flex items-center space-x-4 mb-4">
                   <img
-                    src="https://your-image-url.com/swayam.jpg"
+                    src="./rishu.jpg"
                     alt="Rishu"
                     className="w-12 h-12 rounded-full border-2 border-purple-500"
                   />
                   <div>
-                    <p className="text-white font-medium">Swayam Gupta</p>
+                    <p className="text-white font-medium">Rishu</p>
                     <div className="flex space-x-3 mt-1 text-gray-300">
                       <a
-                        href="https://github.com/swayamgupta"
+                        href="https://github.com/rishugoyal805"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center hover:text-white transition-colors"
                       >
-                        <Github className="w-4 h-4 mr-1" />
+                        <FiGithub className="w-4 h-4 mr-1" />
                         GitHub
                       </a>
                       <a
-                        href="https://linkedin.com/in/swayamgupta"
+                        href="https://www.linkedin.com/in/rishu0405"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center hover:text-white transition-colors"
                       >
-                        <Linkedin className="w-4 h-4 mr-1" />
+                        <FiLinkedin className="w-4 h-4 mr-1" />
                         LinkedIn
                       </a>
                       <a
-                        href="mailto:swayam@example.com"
+                        href="https://mail.google.com/mail/u/0/?view=cm&fs=1&to=swayamsam2005@gmail.com" target="_blank"
                         className="flex items-center hover:text-white transition-colors"
                       >
                         <Mail className="w-4 h-4 mr-1" />

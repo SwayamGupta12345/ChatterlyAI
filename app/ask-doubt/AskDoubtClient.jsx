@@ -1,6 +1,7 @@
 "use client";
 import { Inter } from "next/font/google";
 import { useState, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
   Lightbulb,
@@ -16,7 +17,15 @@ import {
   MessageSquareDiff,
   Share,
   Lock,
+  EllipsisVertical,
+  Edit,
+  Trash2,
+  Pin,
+  Mail,
 } from "lucide-react";
+import { RiUnpinLine } from "react-icons/ri";
+import { TiPinOutline } from "react-icons/ti";
+import { Mic, MicOff } from "lucide-react";
 import { MdDelete } from "react-icons/md";
 import { RiEditLine } from "react-icons/ri";
 import Link from "next/link";
@@ -25,7 +34,15 @@ import { useLayoutEffect, Suspense } from "react";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { FaCopy, FaWhatsapp, FaEnvelope } from "react-icons/fa";
+import {
+  FaCopy,
+  FaWhatsapp,
+  FaEnvelope,
+  FaVolumeUp,
+  FaPause,
+  FaPlay,
+  FaStop,
+} from "react-icons/fa";
 import { getSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import React from "react";
@@ -48,7 +65,13 @@ export default function AskDoubtClient() {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
   const [shareMessage, setShareMessage] = useState("");
+  const [menuOpenId, setMenuOpenId] = useState(null);
   const socket = useRef(null);
+  const [selectedConvoId, setSelectedConvoId] = useState(null);
+  //text message by speaking user
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+
   // const searchParams = useSearchParams();
   // const convoId = searchParams.get("convoId");
   const messagesEndRef = useRef(null);
@@ -57,12 +80,17 @@ export default function AskDoubtClient() {
   const handleCopy = (text) => navigator.clipboard.writeText(text);
   const sendToWhatsApp = (text) =>
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
-  const sendToGmail = (text) => {
+  const sendToGmail = (text, recipientEmail) => {
     const subject = encodeURIComponent("Chatterly");
     const body = encodeURIComponent(text);
-    const gmailUrl = `https://mail.google.com/mail/u/0/?fs=1&to=&su=${subject}&body=${body}&tf=cm`;
+    const to = encodeURIComponent(recipientEmail || "");
+    const gmailUrl = `https://mail.google.com/mail/u/0/?fs=1&to=${to}&su=${subject}&body=${body}&tf=cm`;
     window.open(gmailUrl, "_blank");
   };
+  //listening ai message
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const utteranceRef = useRef(null);
 
   // ✅ Get email from localStorage
   useEffect(() => {
@@ -198,7 +226,8 @@ export default function AskDoubtClient() {
       const aiText = aiRes?.data?.response || "Unexpected response format.";
       const aiMessage = { role: "bot", text: aiText };
       setMessages((prev) => [...prev, aiMessage]);
-      console.log("ai res genet=rated");
+      console.log("ai res generated");
+      setLoading(false);
       // 3. Save AI response via API
       const aiSave = await fetch("/api/Save-Message", {
         method: "POST",
@@ -249,26 +278,40 @@ export default function AskDoubtClient() {
       alert(data.message || "Failed to create chat");
     }
   };
-  // Share chat with a user
-  const handleSendShare = async () => {
-    console.log("hit happened");
-
-    if (!selectedUser) return alert("Select a user is set.");
+  const handleSendShare = async (method) => {
+    if (!selectedUser) return alert("Select a user to share with.");
+    if (!shareMessage.trim()) return alert("Please enter a message to share.");
+    if (selectedUser.email === userEmail) {
+      alert("You cannot share chat with yourself.");
+      return;
+    }
 
     try {
       const res = await fetch("/api/share-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          target: selectedUser.email || selectedUser.nickname,
+          target: selectedUser.email,
           convoId,
-          message: shareMessage, // include message here
+          message: shareMessage,
         }),
       });
 
       const data = await res.json();
+      if (!res.ok) alert("Share failed");
 
-      if (!res.ok) throw new Error(data.error || "Share failed");
+      const chatUrl = `${window.location.origin}/ask-doubt?convoId=${convoId}`;
+      const fullMessage = `${shareMessage.trim()}\n\nView chat: ${chatUrl}`;
+
+      if (method === "gmail") {
+        if (method === "gmail") {
+          sendToGmail(fullMessage, selectedUser.email || "");
+        } else if (method === "whatsapp") {
+          sendToWhatsApp(fullMessage);
+        }
+      } else if (method === "whatsapp") {
+        sendToWhatsApp(fullMessage);
+      }
 
       alert("Chat shared successfully!");
       setShowShare(false);
@@ -333,7 +376,7 @@ export default function AskDoubtClient() {
       const aiText = aiRes?.data?.response || "Unexpected response format.";
       const aiMessage = { role: "bot", text: aiText };
       setMessages((prev) => [...prev, aiMessage]);
-
+      setLoading(false);
       // Save AI response
       const aiSave = await fetch("/api/Save-Message", {
         method: "POST",
@@ -425,6 +468,164 @@ export default function AskDoubtClient() {
     });
     console.log("deleted completely");
   };
+  //editing the name of a chat
+  const handleEditAiChatName = async (chat) => {
+    const newName = prompt("Enter new chat name", chat.name);
+    if (!newName?.trim()) return;
+
+    await fetch("/api/edit-ai-chat-name", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: chat._id, newName }),
+    });
+
+    window.location.reload();
+  };
+  // handling the deletion of an AI chat
+  const handleDeleteAiChat = async (chat) => {
+    if (
+      !confirm(
+        "Are you sure you want to delete this chat and all related data?"
+      )
+    )
+      return;
+
+    await fetch("/api/delete-ai-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: chat._id, convoId: chat.convoId }),
+    });
+
+    window.location.reload();
+  };
+  // handling the pinning and unpining of an AI chat
+  const handleTogglePinAiChat = async (chat, pin) => {
+    await fetch("/api/pin-ai-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId: chat._id, pin }), // send pin true or false
+    });
+
+    window.location.reload();
+  };
+
+  // handling the search for users to share the chat with voice
+  useEffect(() => {
+    // Check if browser supports SpeechRecognition
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("Speech Recognition not supported");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => prev + " " + transcript);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    recognitionRef.current = recognition;
+  }, []);
+
+  // Toggle listening state for voice input
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      recognitionRef.current.start();
+      setListening(true);
+    }
+  };
+  // const handleSpeak = () => {
+  //   if (!text) return;
+
+  //   if (speechSynthesis.speaking) {
+  //     if (speechSynthesis.paused) {
+  //       speechSynthesis.resume();
+  //       setIsPaused(false);
+  //       return;
+  //     } else {
+  //       speechSynthesis.pause();
+  //       setIsPaused(true);
+  //       return;
+  //     }
+  //   }
+
+  //   const utterance = new SpeechSynthesisUtterance(text);
+  //   utterance.lang = "en-US";
+  //   utterance.onstart = () => {
+  //     setIsSpeaking(true);
+  //     setIsPaused(false);
+  //   };
+  //   utterance.onend = () => {
+  //     setIsSpeaking(false);
+  //     setIsPaused(false);
+  //   };
+  //   utterance.onerror = () => {
+  //     setIsSpeaking(false);
+  //     setIsPaused(false);
+  //   };
+
+  //   utteranceRef.current = utterance;
+  //   speechSynthesis.speak(utterance);
+  // };
+  //speak ai message
+  // const speakText = (text) => {
+  //   if (!text) return;
+  //   const utterance = new SpeechSynthesisUtterance(text);
+  //   utterance.lang = "en-US";
+  //   utterance.rate = 1; // You can adjust speaking rate (0.5–2)
+  //   utterance.pitch = 1; // Default pitch
+  //   speechSynthesis.speak(utterance);
+  // };
+  const speakText = (text) => {
+    if (!text) return;
+
+    if (speechSynthesis.speaking) {
+      if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+        setIsPaused(false);
+      } else {
+        speechSynthesis.pause();
+        setIsPaused(true);
+      }
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setIsPaused(false);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+
+    utteranceRef.current = utterance;
+    speechSynthesis.speak(utterance);
+  };
+
   // handling the logout of a user
   const handleLogout = async () => {
     try {
@@ -559,16 +760,80 @@ export default function AskDoubtClient() {
                 <span>New Chat</span>
               </button>
               {/* Dynamically list previous AI chats */}
-              <div className="space-y-1 mt-4 px-2">
+              <div className="space-y-1 mt-4 px-2 max-h-[340px] overflow-y-auto">
                 {user_ai_chats.length > 0 ? (
                   user_ai_chats.map((chat) => (
-                    <Link
+                    <div
                       key={chat._id}
-                      href={`/ask-doubt?convoId=${chat.convoId}`}
-                      className="block text-sm px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      // className="w-full text-left px-4 py-2 rounded-xl transition-colors transform duration-300 relative hover:bg-gray-100"
+                      className="relative group"
                     >
-                      {chat.name || "Untitled Chat"}
-                    </Link>
+                      <Link
+                        href={`/ask-doubt?convoId=${chat.convoId}`}
+                        onClick={() => setSelectedConvoId(chat.convoId)}
+                        className={`block text-sm px-4 py-2 rounded-lg transition-colors pr-8 ${
+                          selectedConvoId === chat.convoId
+                            ? "bg-purple-200 text-purple-800"
+                            : "hover:bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {chat.name || "Untitled Chat"}
+                      </Link>
+                      {/* Pin icon if priority is high */}
+                      {chat.priority === "high" && (
+                        <div
+                          className="absolute top-[25%] right-8 p-1 text-yellow-600"
+                          title="Pinned"
+                        >
+                          <TiPinOutline size={16} fill="currentColor" />
+                        </div>
+                      )}
+                      {/* 3-dot menu trigger */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setMenuOpenId((prev) =>
+                            prev === chat._id ? null : chat._id
+                          );
+                        }}
+                        className="absolute top-[25%] right-2 p-1 hover:bg-gray-200 rounded"
+                      >
+                        <EllipsisVertical size={16} />
+                      </button>
+
+                      {/* Dropdown menu */}
+                      {menuOpenId === chat._id && (
+                        <div className="absolute right-2 top-8 bg-white shadow-md rounded-md border z-10 w-40 text-sm overflow-hidden">
+                          <button
+                            onClick={() => handleEditAiChatName(chat)}
+                            className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-left"
+                          >
+                            <Edit size={14} /> Edit Name
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAiChat(chat)}
+                            className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-left text-red-600"
+                          >
+                            <Trash2 size={14} /> Delete Chat
+                          </button>
+                          {chat.priority === "high" ? (
+                            <button
+                              onClick={() => handleTogglePinAiChat(chat, false)} // unpin
+                              className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-left"
+                            >
+                              <RiUnpinLine size={18} /> Unpin
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleTogglePinAiChat(chat, true)} // pin
+                              className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-left"
+                            >
+                              <Pin size={14} /> Pin to Top
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ))
                 ) : (
                   <p className="text-xs text-gray-400 px-4 italic">
@@ -663,15 +928,16 @@ export default function AskDoubtClient() {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    setSelectedUser({ email: e.target.value }); // ← directly set selected user
+                    setSelectedUser({ email: e.target.value }); // Directly set email
                   }}
-                  placeholder="Enter email or nickname"
+                  placeholder="Enter email"
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm mb-4"
                 />
+
+                {/* Message */}
                 <label className="block text-sm font-medium mb-1">
                   Enter Message to Share
                 </label>
-                {/* Message */}
                 <textarea
                   value={shareMessage}
                   onChange={(e) => setShareMessage(e.target.value)}
@@ -680,8 +946,7 @@ export default function AskDoubtClient() {
                   rows={3}
                 />
 
-                {/* General Access */}
-                {/* <div className="text-xs text-gray-600 mb-2">General access</div> */}
+                {/* Access rules */}
                 <div className="text-xs text-gray-600 mb-2">Access Rules</div>
                 <div className="flex items-center gap-2 text-sm text-gray-700 mb-4">
                   <Lock className="w-4 h-4 text-gray-500" />
@@ -691,19 +956,31 @@ export default function AskDoubtClient() {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-wrap gap-3 justify-between mt-4">
+                  {/* Share buttons on the left */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleSendShare("gmail")}
+                      className="flex items-center text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      Gmail
+                    </button>
+                    <button
+                      onClick={() => handleSendShare("whatsapp")}
+                      className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                    >
+                      <FaWhatsapp className="w-4 h-4 mr-2" />
+                      WhatsApp
+                    </button>
+                  </div>
+
+                  {/* Cancel button aligned right */}
                   <button
                     onClick={() => setShowShare(false)}
-                    className="text-sm bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
+                    className="text-sm bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition ml-auto"
                   >
                     Cancel
-                  </button>
-                  <button
-                    onClick={handleSendShare}
-                    className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                    // disabled={!selectedUser}
-                  >
-                    Send
                   </button>
                 </div>
               </div>
@@ -909,23 +1186,33 @@ export default function AskDoubtClient() {
                           )}
                         </div>
                         {msg.text && (
-                          <div className="flex gap-4 justify-end items-center mt-2 text-xs text-gray-700">
-                            <button
-                              onClick={() => handleEditMessage(msg.id)}
-                              title="Edit message"
-                              className="flex items-center gap-1 text-blue-600 hover:underline"
-                            >
-                              <RiEditLine />
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMessage(msg.id)}
-                              title="Delete message"
-                              className="flex items-center gap-1 text-red-600 hover:underline"
-                            >
-                              <MdDelete />
-                              <span>Delete</span>
-                            </button>
+                          <div
+                            className={`flex gap-4 items-center mt-2 text-xs text-gray-700 ${
+                              msg.role === "user"
+                                ? "justify-end"
+                                : "justify-start"
+                            }`}
+                          >
+                            {msg.role === "user" && (
+                              <>
+                                <button
+                                  onClick={() => handleEditMessage(msg.id)}
+                                  title="Edit message"
+                                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                                >
+                                  <RiEditLine />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMessage(msg.id)}
+                                  title="Delete message"
+                                  className="flex items-center gap-1 text-red-600 hover:underline"
+                                >
+                                  <MdDelete />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            )}
                             <button
                               onClick={() => handleCopy(msg.text)}
                               title="Copy message"
@@ -934,6 +1221,49 @@ export default function AskDoubtClient() {
                               <FaCopy />
                               <span>Copy</span>
                             </button>
+                            {msg.role !== "user" && (
+                              <button
+                                onClick={() => speakText(msg.text)}
+                                title={
+                                  isPaused
+                                    ? "Resume speaking"
+                                    : isSpeaking
+                                    ? "Pause speaking"
+                                    : "Play"
+                                }
+                                className="flex items-center gap-1 text-green-600 hover:text-green-800 transition"
+                              >
+                                {isSpeaking ? (
+                                  isPaused ? (
+                                    <FaPlay className="w-4 h-4" />
+                                  ) : (
+                                    <FaPause className="w-4 h-4" />
+                                  )
+                                ) : (
+                                  <FaVolumeUp className="w-4 h-4" />
+                                )}
+                                <span className="text-sm">
+                                  {isPaused
+                                    ? "Resume"
+                                    : isSpeaking
+                                    ? "Pause"
+                                    : "Pause"}
+                                </span>
+                                {isSpeaking && (
+                                  <button
+                                    onClick={() => {
+                                      speechSynthesis.cancel();
+                                      setIsSpeaking(false);
+                                      setIsPaused(false);
+                                    }}
+                                    className="flex flex-row mr-1 pr-1"
+                                  >
+                                    <FaStop className="w-4 h-4 ml-3 mr-1" />
+                                    <span>Stop</span>
+                                  </button>
+                                )}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -962,12 +1292,29 @@ export default function AskDoubtClient() {
                         sendMessage();
                       }
                     }}
-                    placeholder="Type your message..."
-                    rows={1}
+                    placeholder="Type or speak your message..."
+                    rows={2}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <button
-                    onClick={sendMessage}
+                    onClick={toggleListening}
+                    className={`p-2 rounded-xl border transition ${
+                      listening
+                        ? "bg-red-500 text-white"
+                        : "bg-white text-black"
+                    }`}
+                  >
+                    {listening ? (
+                      <MicOff className="w-5 h-5" />
+                    ) : (
+                      <Mic className="w-5 h-5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      sendMessage(input);
+                      setInput("");
+                    }}
                     disabled={loading}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-xl hover:scale-105 transition"
                   >

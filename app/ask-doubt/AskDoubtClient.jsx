@@ -71,7 +71,7 @@ export default function AskDoubtClient() {
   //text message by speaking user
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
-
+  const [liveTranscript, setLiveTranscript] = useState("");
   // const searchParams = useSearchParams();
   // const convoId = searchParams.get("convoId");
   const messagesEndRef = useRef(null);
@@ -372,7 +372,7 @@ export default function AskDoubtClient() {
       });
 
       const data = await res.json();
-      if (!res.ok) alert("Share failed");
+      if (!res.ok) alert("Share failed to add in db");
 
       const chatUrl = `${window.location.origin}/ask-doubt?convoId=${convoId}`;
       const fullMessage = `${shareMessage.trim()}\n\nView chat: ${chatUrl}`;
@@ -584,44 +584,104 @@ export default function AskDoubtClient() {
   };
 
   // handling the search for users to share the chat with voice
+  // useEffect(() => {
+  //   // Check if browser supports SpeechRecognition
+  //   const SpeechRecognition =
+  //     window.SpeechRecognition || window.webkitSpeechRecognition;
+  //   if (!SpeechRecognition) {
+  //     console.warn("Speech Recognition not supported");
+  //     return;
+  //   }
+
+  //   const recognition = new SpeechRecognition();
+  //   recognition.lang = "en-US";
+  //   recognition.interimResults = false;
+  //   recognition.continuous = false;
+
+  //   recognition.onresult = (event) => {
+  //     const transcript = event.results[0][0].transcript;
+  //     setInput((prev) => prev + " " + transcript);
+  //   };
+
+  //   recognition.onend = () => {
+  //     setListening(false);
+  //   };
+
+  //   recognitionRef.current = recognition;
+  // }, []);
   useEffect(() => {
-    // Check if browser supports SpeechRecognition
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
+
     if (!SpeechRecognition) {
-      console.warn("Speech Recognition not supported");
+      console.warn("Speech Recognition not supported in this browser.");
       return;
     }
 
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.continuous = false;
+    recognition.interimResults = true; // for live preview
+    recognition.continuous = false; // stops after one pause in speech
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setInput((prev) => prev + " " + transcript);
+      let interim = "";
+      let final = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript + " ";
+        } else {
+          interim += transcript + " ";
+        }
+      }
+
+      if (final) {
+        setInput((prev) => prev + " " + final);
+      }
+      setLiveTranscript(interim);
     };
 
     recognition.onend = () => {
       setListening(false);
+      setLiveTranscript(""); // clear interim preview
+    };
+
+    recognition.onerror = (e) => {
+      console.error("Speech Recognition Error:", e);
+      setListening(false);
+      setLiveTranscript("");
     };
 
     recognitionRef.current = recognition;
   }, []);
 
+
   // Toggle listening state for voice input
+  // const toggleListening = () => {
+  //   if (!recognitionRef.current) return;
+
+  //   if (listening) {
+  //     recognitionRef.current.stop();
+  //     setListening(false);
+  //   } else {
+  //     recognitionRef.current.start();
+  //     setListening(true);
+  //   }
+  // };
   const toggleListening = () => {
     if (!recognitionRef.current) return;
 
     if (listening) {
       recognitionRef.current.stop();
-      setListening(false);
     } else {
       recognitionRef.current.start();
-      setListening(true);
+      setLiveTranscript("");
     }
+
+    setListening((prev) => !prev);
   };
+
   const speakText = (text) => {
     if (!text) return;
 
@@ -709,21 +769,21 @@ export default function AskDoubtClient() {
                   className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                 >
                   <LayoutDashboard className="w-5 h-5" />
-                  <span>Dashboard</span>
+                  <span className="text-sm">Dashboard</span>
                 </Link>
                 <Link
                   href="/ask-doubt"
                   className="flex items-center space-x-3 px-4 py-3 bg-purple-100 text-purple-700 rounded-xl"
                 >
                   <Lightbulb className="w-5 h-5" />
-                  <span>Chatbot</span>
+                  <span className="text-sm">Chatbot</span>
                 </Link>
                 <Link
                   href="/chat"
                   className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
                 >
                   <MessageCircleMore className="w-5 h-5" />
-                  <span>Chat with Friends</span>
+                  <span className="text-sm" >Chat with Friends</span>
                 </Link>
               </nav>
             </div>
@@ -765,21 +825,21 @@ export default function AskDoubtClient() {
                 className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
               >
                 <LayoutDashboard className="w-5 h-5" />
-                <span>Dashboard</span>
+                <span className="text-sm">Dashboard</span>
               </Link>
               <Link
                 href="/ask-doubt"
                 className="flex items-center space-x-3 px-4 py-3 bg-purple-100 text-purple-700 rounded-xl"
               >
                 <Lightbulb className="w-5 h-5" />
-                <span>Chatbot</span>
+                <span className="text-sm">Chatbot</span>
               </Link>
               <Link
                 href="/chat"
                 className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
               >
                 <MessageCircleMore className="w-5 h-5" />
-                <span>Chat with Friends</span>
+                <span className="text-sm" >Chat with Friends</span>
               </Link>
               <hr className="border-t-2 border-gray-400 rounded-full my-4 shadow-sm" />
               <button
@@ -787,10 +847,12 @@ export default function AskDoubtClient() {
                 className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors w-full"
               >
                 <MessageSquareDiff className="w-5 h-5" />
-                <span>New Chat</span>
+                <span className="text-sm">New Chat</span>
+
               </button>
+              <hr className="border-t-2 border-gray-400 rounded-full mb-3 my-4 shadow-sm" />
               {/* Dynamically list previous AI chats */}
-              <div className="space-y-1 mt-4 px-2 max-h-[340px] overflow-y-auto">
+              <div className="space-y-1 mt-5 px-2 h-[47dvh]  overflow-y-auto">
                 {user_ai_chats.length > 0 ? (
                   user_ai_chats.map((chat) => (
                     <div
@@ -801,7 +863,7 @@ export default function AskDoubtClient() {
                       <Link
                         href={`/ask-doubt?convoId=${chat.convoId}`}
                         onClick={() => setSelectedConvoId(chat.convoId)}
-                        className={`block text-sm px-4 py-2 rounded-lg transition-colors pr-8 ${selectedConvoId === chat.convoId
+                        className={`block text-sm px-4 py-2 rounded-lg transition-colors pr-8  ${selectedConvoId === chat.convoId
                           ? "bg-purple-200 text-purple-800"
                           : "hover:bg-gray-100 text-gray-700"
                           }`}
@@ -1027,8 +1089,7 @@ export default function AskDoubtClient() {
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 pb-32">
                 {messages.map((msg) => (
-                  <div
-                    key={msg.id}
+                  <div key={msg.id}
                     className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"
                       }`}
                   >
@@ -1334,6 +1395,48 @@ export default function AskDoubtClient() {
                     ) : (
                       <Mic className="w-5 h-5" />
                     )}
+                    {listening && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm text-center">
+                        <div className="bg-white rounded-2xl shadow-2xl px-6 py-8 w-[90%] max-w-sm relative flex flex-col items-center gap-4">
+
+                          {/* Stop mic button (X icon) */}
+                          <button
+                            onClick={toggleListening}
+                            className="absolute top-3 right-3 p-2 bg-gray-100 hover:bg-red-100 rounded-full"
+                            title="Stop Listening"
+                          >
+                            <X className="w-5 h-5 text-red-500" />
+                          </button>
+
+                          {/* Microphone animation */}
+                          <div className="relative mt-2">
+                            <div className="absolute h-16 w-16 bg-green-400 opacity-75 rounded-full animate-ping"></div>
+                            <div className="h-16 w-16 bg-green-600 rounded-full flex items-center justify-center relative z-10">
+                              <Mic className="w-6 h-6 text-white" />
+                            </div>
+                          </div>
+
+                          {/* Listening text */}
+                          <p className="text-gray-600 text-sm font-medium">Listening…</p>
+
+                          {/* Live preview text */}
+                          {liveTranscript && (
+                            <p className="text-gray-700 text-sm bg-gray-100 rounded-md px-4 py-2 w-full text-center">
+                              {liveTranscript}
+                            </p>
+                          )}
+
+                          {/* Manual stop */}
+                          <button
+                            onClick={toggleListening}
+                            className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 transition"
+                          >
+                            Stop & Continue
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                   </button>
                   <button
                     onClick={() => {

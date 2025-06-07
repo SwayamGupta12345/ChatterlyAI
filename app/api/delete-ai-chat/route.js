@@ -9,7 +9,7 @@ export async function POST(req) {
     if (!chatId || !convoId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
-
+ 
     const { db } = await connectToDatabase();
 
     const convo = await db.collection("conversations").findOne({ _id: new ObjectId(convoId) });

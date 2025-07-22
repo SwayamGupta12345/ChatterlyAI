@@ -47,7 +47,7 @@ export default function LoginPage() {
   }
   const handleGoogleLogin = () => {
     setIsGoogleLoading(true)
-    signIn("google", { callbackUrl: "/dashboard" })
+    signIn("google", { callbackUrl: `${window.location.origin}/dashboard` });
   }
 
   const handleChange = (e) => {

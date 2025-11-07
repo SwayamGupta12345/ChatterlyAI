@@ -62,6 +62,8 @@ export default function AskDoubtClient() {
   const [userEmail, setUserEmail] = useState("");
   const [user_ai_chats, setUser_ai_chats] = useState([]);
   const [chatToDelete, setChatToDelete] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
+
 
   const [editingChatId, setEditingChatId] = useState(null);
   const [newChatName, setNewChatName] = useState("");
@@ -335,27 +337,6 @@ export default function AskDoubtClient() {
   //     role: "user",
   //   });
   // };
-
-  // Handle Enter key to create a new chat
-  //   const handleNewChat = async () => {
-  //   try {
-  //     const res = await fetch("/api/create-new-chat", { method: "POST" });
-  //     const data = await res.json();
-
-  //     if (res.ok) {
-  //       // Add the new chat to the existing chats
-  //       setUser_ai_chats((prevChats) => [data, ...prevChats]); // prepend to show newest first
-
-  //       // Optionally, if you want to scroll to the new chat
-  //       // document.getElementById(`chat-${data._id}`)?.scrollIntoView({ behavior: "smooth" });
-  //     } else {
-  //       alert(data.message || "Failed to create chat");
-  //     }
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Something went wrong while creating chat.");
-  //   }
-  // };
   const handleNewChat = async () => {
     try {
       const res = await fetch("/api/create-new-chat", { method: "POST" });
@@ -442,7 +423,7 @@ export default function AskDoubtClient() {
   };
 
   // 1. Duplicated sendMessage logic, renamed to resendEditedMessage
-  const resendEditedMessage = async (text) => {
+  const resendEditedMessage = async (text, editIndex) => {
     if (!text.trim()) return;
 
     if (!userEmail) {
@@ -453,28 +434,41 @@ export default function AskDoubtClient() {
       return;
     }
 
-    const userMessage = { role: "user", text };
-    setMessages((prev) => [...prev, userMessage]);
+    // 1️⃣ Optimistically remove all messages below the edited one
+    setMessages((prev) => prev.slice(0, editIndex + 1));
+
+    // 2️⃣ Add updated user message immediately
+    const updatedUserMsg = { role: "user", text };
+    setMessages((prev) => [...prev.slice(0, editIndex), updatedUserMsg]);
     setInput("");
     setLoading(true);
     setError("");
 
     try {
-      // Save user message
+      // 🔹 Delete old messages from backend (those below current index)
+      await fetch("/api/delete-below", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          convoId,
+          index: editIndex,
+        }),
+      });
+
+      // 🔹 Save updated user message
       const userRes = await fetch("/api/Save-Message", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           senderName: userEmail,
           text,
           role: "user",
         }),
       });
+
       const { insertedId: userMessageId } = await userRes.json();
 
-      // Get AI response
+      // 🔹 Fetch new AI response
       const aiRes = await axios.post("https://askdemia1.onrender.com/chat", {
         user_id: userEmail,
         message: text,
@@ -482,14 +476,15 @@ export default function AskDoubtClient() {
 
       const aiText = aiRes?.data?.response || "Unexpected response format.";
       const aiMessage = { role: "bot", text: aiText };
+
+      // 3️⃣ Add AI message to UI immediately
       setMessages((prev) => [...prev, aiMessage]);
       setLoading(false);
-      // Save AI response
+
+      // 🔹 Save AI response to DB
       const aiSave = await fetch("/api/Save-Message", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           senderName: "AI",
           text: aiText,
@@ -499,12 +494,10 @@ export default function AskDoubtClient() {
 
       const { insertedId: aiResponseId } = await aiSave.json();
 
-      // Save message pair
+      // 🔹 Link message pair in backend
       await fetch("/api/add-message-pair", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           convoId,
           userMessageId,
@@ -514,6 +507,8 @@ export default function AskDoubtClient() {
     } catch (err) {
       console.error("Error resending message:", err);
       setError("Something went wrong. Try again.");
+
+      // 4️⃣ Show error response in UI
       setMessages((prev) => [
         ...prev,
         { role: "bot", text: "⚠️ Server error. Please try again later." },
@@ -563,18 +558,34 @@ export default function AskDoubtClient() {
   };
   // handling the deletion of a message
   const handleDeleteMessage = async (id) => {
-    setMessages((prev) => prev.filter((msg) => msg.id !== id));
+    setMessages((prev) => {
+      const idx = prev.findIndex((msg) => msg.id === id);
+      if (idx === -1) return prev;
 
-    await fetch("/api/delete-ai-message", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messageId: id,
-        convoId: convoId,
-      }),
+      // remove both: the user message and its next AI response (if any)
+      const updated = [...prev];
+      updated.splice(idx, 1); // remove user message
+      if (updated[idx] && updated[idx].role === "bot") {
+        updated.splice(idx, 1); // remove immediate AI response
+      }
+      return updated;
     });
-    console.log("deleted completely");
+
+    try {
+      await fetch("/api/delete-ai-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messageId: id,
+          convoId,
+        }),
+      });
+      console.log("Deleted completely");
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
   };
+
   //Inline chat rename (no prompt, no reload)
   const handleEditAiChatName = async (chat) => {
     const trimmed = newChatName?.trim();
@@ -1179,9 +1190,9 @@ export default function AskDoubtClient() {
           <main className="flex-1 relative overflow-x-hidden">
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 pb-32">
-                {messages.map((msg) => (
+                {messages.map((msg, index) => (
                   <div
-                    key={msg.id}
+                    key={msg.id || index}
                     className={`flex ${
                       msg.role === "user" ? "justify-end" : "justify-start"
                     }`}
@@ -1199,18 +1210,18 @@ export default function AskDoubtClient() {
 
                       <div className="markdown-content text-sm text-gray-800 overflow-x-hidden">
                         <div className="min-w-full">
-                          {editingIndex === msg.id ? (
+                          {editingIndex === (msg.id ?? index) ? (
                             <div className="space-y-2">
                               <textarea
                                 value={editingText}
                                 onChange={(e) => setEditingText(e.target.value)}
-                                className="w-full p-2 border rounded"
+                                className="w-full p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                 rows={2}
                               />
-                              <div className="flex justify-end gap-2 text-sm">
+                              <div className="flex justify-end gap-3 text-sm">
                                 <button
                                   onClick={confirmEditMessage}
-                                  className="text-green-600 hover:underline"
+                                  className="text-green-600 hover:text-green-700 font-medium"
                                 >
                                   Save
                                 </button>
@@ -1219,7 +1230,7 @@ export default function AskDoubtClient() {
                                     setEditingIndex(null);
                                     setEditingText("");
                                   }}
-                                  className="text-gray-600 hover:underline"
+                                  className="text-gray-600 hover:text-gray-800 font-medium"
                                 >
                                   Cancel
                                 </button>
@@ -1386,7 +1397,9 @@ export default function AskDoubtClient() {
                                   <span>Edit</span>
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteMessage(msg.id)}
+                                  onClick={() =>
+                                    setConfirmDelete({ show: true, id: msg.id })
+                                  }
                                   title="Delete message"
                                   className="flex items-center gap-1 text-red-600 hover:underline"
                                 >
@@ -1547,6 +1560,38 @@ export default function AskDoubtClient() {
                 </div>
               </div>
             </div>
+            {confirmDelete.show && (
+              <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+                <div className="bg-white rounded-xl shadow-lg p-5 w-[90%] max-w-sm animate-fadeIn">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                    Delete this message?
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    This will permanently remove the message and its AI
+                    response.
+                  </p>
+                  <div className="flex justify-end gap-3 text-sm">
+                    <button
+                      onClick={() =>
+                        setConfirmDelete({ show: false, id: null })
+                      }
+                      className="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDeleteMessage(confirmDelete.id);
+                        setConfirmDelete({ show: false, id: null });
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </main>
         </div>
       </div>

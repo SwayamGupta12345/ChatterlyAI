@@ -228,31 +228,6 @@ export default function AskDoubtClient() {
     fetchConversation();
   }, [convoId]);
 
-  // // Send message to socket server
-  // const sendMessage = async () => {
-  //   if (!input.trim()) return;
-
-  //   if (!userEmail) {
-  //     setMessages((prev) => [
-  //       ...prev,
-  //       { role: "bot", text: "❗ Please login to use chat." },
-  //     ]);
-  //     return;
-  //   }
-
-  //   const userMessage = { role: "user", text: input };
-  //   setInput("");
-  //   setLoading(true);
-  //   setError("");
-
-  //   // 🚀 Emit to socket server, let it handle everything
-  //   socket.current.emit("send-ai-message", {
-  //     roomId: convoId,
-  //     senderName: userEmail,
-  //     text: input,
-  //     role: "user",
-  //   });
-  // };
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -332,6 +307,32 @@ export default function AskDoubtClient() {
     }
   };
 
+  // // Send message to socket server
+  // const sendMessage = async () => {
+  //   if (!input.trim()) return;
+
+  //   if (!userEmail) {
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       { role: "bot", text: "❗ Please login to use chat." },
+  //     ]);
+  //     return;
+  //   }
+
+  //   const userMessage = { role: "user", text: input };
+  //   setInput("");
+  //   setLoading(true);
+  //   setError("");
+
+  //   // 🚀 Emit to socket server, let it handle everything
+  //   socket.current.emit("send-ai-message", {
+  //     roomId: convoId,
+  //     senderName: userEmail,
+  //     text: input,
+  //     role: "user",
+  //   });
+  // };
+  
   // Handle Enter key to create a new chat
   const handleNewChat = async () => {
     const res = await fetch("/api/create-new-chat", { method: "POST" });

@@ -1524,19 +1524,19 @@ export default function AskDoubtClient() {
                                     ? "Pause"
                                     : "Play"}
                                 </span>
-                                {isSpeaking && (
+                                {/* {isSpeaking && (
                                   <button
                                     onClick={() => {
                                       speechSynthesis.cancel();
                                       setIsSpeaking(false);
-                                      setIsPaused(false);
+                                      setIsPaused(true);
                                     }}
                                     className="flex flex-row mr-1 pr-1"
                                   >
                                     <FaStop className="w-4 h-4 ml-3 mr-1" />
                                     <span>Stop</span>
                                   </button>
-                                )}
+                                )} */}
                               </button>
                             )}
                           </div>

@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BookOpen, 
+  BookOpen,
   Lightbulb,
   Menu,
   X,
@@ -1457,26 +1457,6 @@ export default function AskDoubtClient() {
                               />{" "}
                               <div className="flex items-center justify-between px-1">
                                 <button
-                                  onClick={() =>
-                                    navigator.clipboard.writeText(msg.text)
-                                  }
-                                  className="text-gray-600 text-xs hover:text-black"
-                                >
-                                  Copy
-                                </button>
-
-                                {/* <button
-                                  onClick={() => {
-                                    const a = document.createElement("a");
-                                    a.href = msg.imageUrl;
-                                    a.download = "generated.png";
-                                    a.click();
-                                  }}
-                                  className="text-blue-500 text-xs font-semibold"
-                                >
-                                  Download
-                                </button> */}
-                                <button
                                   onClick={async () => {
                                     try {
                                       const res = await fetch(msg.imageUrl);
@@ -1696,7 +1676,7 @@ export default function AskDoubtClient() {
                               <FaCopy />
                               <span>Copy</span>
                             </button>
-                            {msg.role !== "user" && msg.isImg==false && (
+                            {msg.role !== "user" && msg.isImg == false && (
                               <button
                                 onClick={() => speakText(msg.text)}
                                 title={

@@ -1696,7 +1696,7 @@ export default function AskDoubtClient() {
                               <FaCopy />
                               <span>Copy</span>
                             </button>
-                            {msg.role !== "user" && (
+                            {msg.role !== "user" && msg.isImg==false && (
                               <button
                                 onClick={() => speakText(msg.text)}
                                 title={

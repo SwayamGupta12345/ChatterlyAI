@@ -67,6 +67,8 @@ export default function AskDoubtClient() {
   const [editingChatId, setEditingChatId] = useState(null);
   const [newChatName, setNewChatName] = useState("");
 
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+
   const [showShare, setShowShare] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingText, setEditingText] = useState("");
@@ -175,19 +177,6 @@ export default function AskDoubtClient() {
   }, []);
 
   //fetchUserChats the chats for the user
-  // const fetchUserChats = async () => {
-  //   try {
-  //     const res = await fetch("/api/fetch-ai-chats");
-  //     const data = await res.json();
-  //     if (res.ok) {
-  //       setUser_ai_chats(data.chats); // or whatever state you use to render sidebar/chat list
-  //     } else {
-  //       console.error("Error loading chats:", data.message);
-  //     }
-  //   } catch (err) {
-  //     console.error("Fetch failed:", err);
-  //   }
-  // };
   const fetchUserChats = async () => {
     try {
       const res = await fetch("/api/fetch-ai-chats");
@@ -213,6 +202,7 @@ export default function AskDoubtClient() {
   useEffect(() => {
     fetchUserChats();
   }, []);
+
   useEffect(() => {
     if (!convoId) return;
 
@@ -220,6 +210,7 @@ export default function AskDoubtClient() {
       try {
         const res = await fetch(`/api/get-conversation?convoId=${convoId}`);
         if (!res.ok) return;
+
         const data = await res.json();
 
         const formatted = data.messages.flatMap((pair) => [
@@ -227,13 +218,15 @@ export default function AskDoubtClient() {
             id: pair.user?.id || null,
             text: pair.user?.text || "[Missing User Message]",
             role: "user",
-            isImg: pair.user?.isImg ?? false, // <-- FIXED
+            isImg: pair.user?.isImg ?? false,
+            image: pair.user?.image ?? null,
           },
           {
             id: pair.ai?.id || null,
             text: pair.ai?.text || "[Missing AI Response]",
             role: "ai",
-            isImg: pair.ai?.isImg ?? false, // <-- FIXED
+            isImg: pair.ai?.isImg ?? false,
+            image: pair.ai?.image ?? null,
           },
         ]);
 
@@ -244,7 +237,6 @@ export default function AskDoubtClient() {
         );
       } catch (err) {
         console.error("Failed to load conversation", err);
-
         setMessages([
           { text: "Start A Conversation", role: "system", isImg: false },
         ]);
@@ -253,6 +245,134 @@ export default function AskDoubtClient() {
 
     fetchConversation();
   }, [convoId]);
+
+  const handleSubmit = async () => {
+    const text = input.trim();
+    if (!text) return;
+
+    // very simple detection: starts with "/img" or "img:" etc
+    const isImgRequest =
+      text.startsWith("/img") ||
+      text.startsWith("img:") ||
+      text.startsWith("image:") ||
+      text.startsWith("/image");
+
+    if (isImgRequest) {
+      await generateImage(text.replace(/^\/?img:?/i, "").trim());
+    } else {
+      await sendMessage(text);
+    }
+
+    setInput("");
+  };
+
+  const generateImage = async (prompt) => {
+    if (!prompt.trim()) return;
+    if (!userEmail) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: "❗ Please login,", isImg: false },
+      ]);
+      return;
+    }
+
+    // 1️⃣ Show user prompt in chat
+    const userMessage = { role: "user", text: prompt, isImg: false };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    socket.current.emit("send-message", {
+      roomId: convoId,
+      senderEmail: userEmail,
+      text: prompt,
+      isImg: false,
+    });
+
+    setLoading(true);
+
+    try {
+      // 2️⃣ Save user message in DB
+      const userRes = await fetch("/api/Save-Message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          senderName: userEmail,
+          text: prompt,
+          role: "user",
+          isImg: false,
+        }),
+      });
+
+      const { insertedId: userMessageId } = await userRes.json();
+
+      // 3️⃣ Call your HF image API
+      const imgRes = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const imgData = await imgRes.json();
+      const base64Image = imgData.image;
+
+      // 4️⃣ Add AI image message in UI
+      const aiMessage = {
+        role: "bot",
+        text: prompt, // keeping same format as your AI text
+        image: base64Image,
+        isImg: true,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+      setLoading(false);
+      socket.current.emit("send-message", {
+        roomId: convoId,
+        senderEmail: "AI",
+        text: prompt,
+        image: base64Image,
+        isImg: true,
+      });
+
+      // 5️⃣ Save AI message in DB
+      const aiSave = await fetch("/api/Save-Message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          senderName: "AI",
+          text: prompt,
+          role: "ai",
+          isImg: true,
+          image: base64Image,
+        }),
+      });
+
+      const { insertedId: aiResponseId } = await aiSave.json();
+
+      // 6️⃣ Link user + AI message as a pair
+      await fetch("/api/add-message-pair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          convoId,
+          userMessageId,
+          aiResponseId,
+        }),
+      });
+
+      await fetchUserChats();
+    } catch (err) {
+      console.error("IMAGE GEN ERROR:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: "⚠️ Failed to generate image. Try again.",
+          isImg: false,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // const sendMessage = async () => {
   //   if (!input.trim()) return;
@@ -1349,6 +1469,41 @@ export default function AskDoubtClient() {
                                 </button>
                               </div>
                             </div>
+                          ) : msg.isImg ? (
+                            <div
+                              className={`max-w-xs bg-white border shadow-sm rounded-xl p-2 flex flex-col gap-2 ${
+                                msg.role === "user" ? "self-end" : "self-start"
+                              }`}
+                            >
+                              <img
+                                src={msg.image}
+                                alt="Generated"
+                                className="w-full h-auto rounded-lg object-cover cursor-pointer"
+                                onClick={() => setFullscreenImage(msg.image)}
+                              />{" "}
+                              <div className="flex items-center justify-between px-1">
+                                <button
+                                  onClick={() =>
+                                    navigator.clipboard.writeText(msg.text)
+                                  }
+                                  className="text-gray-600 text-xs hover:text-black"
+                                >
+                                  Copy
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    const a = document.createElement("a");
+                                    a.href = msg.image;
+                                    a.download = "generated.png";
+                                    a.click();
+                                  }}
+                                  className="text-blue-500 text-xs font-semibold"
+                                >
+                                  Download
+                                </button>
+                              </div>
+                            </div>
                           ) : (
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
@@ -1390,7 +1545,7 @@ export default function AskDoubtClient() {
                                         position: "relative",
                                         marginBottom: "1rem",
                                       }}
-                                    > 
+                                    >
                                       <pre className="bg-blue-500 text-white p-4 rounded-md overflow-x-auto text-sm">
                                         <code>
                                           {typeof children === "string"
@@ -1497,6 +1652,17 @@ export default function AskDoubtClient() {
                               {msg.text}
                             </ReactMarkdown>
                           )}
+                          {fullscreenImage && (
+                            <div
+                              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
+                              onClick={() => setFullscreenImage(null)}
+                            >
+                              <img
+                                src={fullscreenImage}
+                                className="max-w-[90%] max-h-[90%] rounded-xl shadow-2xl"
+                              />
+                            </div>
+                          )}
                         </div>
                         {msg.text && (
                           <div
@@ -1564,19 +1730,6 @@ export default function AskDoubtClient() {
                                     ? "Pause"
                                     : "Play"}
                                 </span>
-                                {/* {isSpeaking && (
-                                  <button
-                                    onClick={() => {
-                                      speechSynthesis.cancel();
-                                      setIsSpeaking(false);
-                                      setIsPaused(true);
-                                    }}
-                                    className="flex flex-row mr-1 pr-1"
-                                  >
-                                    <FaStop className="w-4 h-4 ml-3 mr-1" />
-                                    <span>Stop</span>
-                                  </button>
-                                )} */}
                               </button>
                             )}
                           </div>
@@ -1604,7 +1757,8 @@ export default function AskDoubtClient() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        sendMessage();
+                        // sendMessage();
+                        handleSubmit();
                       }
                     }}
                     placeholder="Type or speak your message..."
@@ -1668,10 +1822,7 @@ export default function AskDoubtClient() {
                     )}
                   </button>
                   <button
-                    onClick={() => {
-                      sendMessage(input);
-                      setInput("");
-                    }}
+                    onClick={handleSubmit}
                     disabled={loading}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-xl hover:scale-105 transition"
                   >

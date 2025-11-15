@@ -1,19 +1,22 @@
-import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
+import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
-    const convoId = searchParams.get('convoId');
+    const convoId = searchParams.get("convoId");
 
     if (!convoId || !ObjectId.isValid(convoId)) {
-      return NextResponse.json({ error: 'Invalid or missing convoId' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid or missing convoId" },
+        { status: 400 }
+      );
     }
 
     const { db } = await connectToDatabase();
 
-    const conversation = await db.collection('conversations').findOne({
+    const conversation = await db.collection("conversations").findOne({
       _id: new ObjectId(convoId),
     });
 
@@ -23,25 +26,33 @@ export async function GET(req) {
 
     const messages = await Promise.all(
       conversation.messages.map(async ({ userMessageId, aiResponseId }) => {
-        const userMsg = await db.collection('messages').findOne({ _id: new ObjectId(userMessageId) });
-        const aiMsg = await db.collection('messages').findOne({ _id: new ObjectId(aiResponseId) });
+        const userMsg = await db
+          .collection("messages")
+          .findOne({ _id: new ObjectId(userMessageId) });
+        const aiMsg = await db
+          .collection("messages")
+          .findOne({ _id: new ObjectId(aiResponseId) });
 
         return {
-          user: {
+         user: {
             id: userMsg?._id?.toString() || null,
             text: userMsg?.text || "[Missing User Message]",
+            isImg: userMsg?.isImg ?? false,
+            image: userMsg?.image ?? null,
           },
-        ai: {
+          ai: {
             id: aiMsg?._id?.toString() || null,
             text: aiMsg?.text || "[Missing AI Response]",
-          }
+            isImg: aiMsg?.isImg ?? false,
+            image: aiMsg?.image ?? null,
+          },
         };
       })
     );
 
     return NextResponse.json({ messages }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching conversation:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error("Error fetching conversation:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

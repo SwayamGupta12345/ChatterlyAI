@@ -131,7 +131,7 @@ export default function AskDoubtClient() {
       if (!text.trim()) return;
       setMessages((prev) => [
         ...prev,
-        { role: senderEmail === "AI" ? "bot" : "user", text, isImg: false },
+        { role: senderEmail === "AI" ? "bot" : "user", text },
       ]);
     });
 
@@ -167,7 +167,6 @@ export default function AskDoubtClient() {
           {
             role: "bot",
             text: "⚠️ Please log in again. User session is missing.",
-            isImg: false,
           },
         ]);
       }
@@ -202,7 +201,6 @@ export default function AskDoubtClient() {
   useEffect(() => {
     fetchUserChats();
   }, []);
-
   useEffect(() => {
     if (!convoId) return;
 
@@ -210,7 +208,6 @@ export default function AskDoubtClient() {
       try {
         const res = await fetch(`/api/get-conversation?convoId=${convoId}`);
         if (!res.ok) return;
-
         const data = await res.json();
 
         const formatted = data.messages.flatMap((pair) => [
@@ -233,146 +230,19 @@ export default function AskDoubtClient() {
         setMessages(
           formatted.length > 0
             ? formatted
-            : [{ text: "Start A Conversation", role: "system", isImg: false }]
+            : [{ text: "Start A Conversation", from: "system" }]
         );
       } catch (err) {
         console.error("Failed to load conversation", err);
         setMessages([
           { text: "Start A Conversation", role: "system", isImg: false },
         ]);
+        setMessages([{ text: "Start A Conversation", from: "system" }]);
       }
     };
 
     fetchConversation();
   }, [convoId]);
-
-  const handleSubmit = async () => {
-    const text = input.trim();
-    if (!text) return;
-
-    // very simple detection: starts with "/img" or "img:" etc
-    const isImgRequest =
-      text.startsWith("/img") ||
-      text.startsWith("img:") ||
-      text.startsWith("image:") ||
-      text.startsWith("/image");
-
-    if (isImgRequest) {
-      await generateImage(text.replace(/^\/?img:?/i, "").trim());
-    } else {
-      await sendMessage(text);
-    }
-
-    setInput("");
-  };
-
-  const generateImage = async (prompt) => {
-    if (!prompt.trim()) return;
-    if (!userEmail) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "bot", text: "❗ Please login,", isImg: false },
-      ]);
-      return;
-    }
-
-    // 1️⃣ Show user prompt in chat
-    const userMessage = { role: "user", text: prompt, isImg: false };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    socket.current.emit("send-message", {
-      roomId: convoId,
-      senderEmail: userEmail,
-      text: prompt,
-      isImg: false,
-    });
-
-    setLoading(true);
-
-    try {
-      // 2️⃣ Save user message in DB
-      const userRes = await fetch("/api/Save-Message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          senderName: userEmail,
-          text: prompt,
-          role: "user",
-          isImg: false,
-        }),
-      });
-
-      const { insertedId: userMessageId } = await userRes.json();
-
-      // 3️⃣ Call your HF image API
-      const imgRes = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-
-      const imgData = await imgRes.json();
-      const base64Image = imgData.image;
-
-      // 4️⃣ Add AI image message in UI
-      const aiMessage = {
-        role: "bot",
-        text: prompt, // keeping same format as your AI text
-        image: base64Image,
-        isImg: true,
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-      setLoading(false);
-      socket.current.emit("send-message", {
-        roomId: convoId,
-        senderEmail: "AI",
-        text: prompt,
-        image: base64Image,
-        isImg: true,
-      });
-
-      // 5️⃣ Save AI message in DB
-      const aiSave = await fetch("/api/Save-Message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          senderName: "AI",
-          text: prompt,
-          role: "ai",
-          isImg: true,
-          image: base64Image,
-        }),
-      });
-
-      const { insertedId: aiResponseId } = await aiSave.json();
-
-      // 6️⃣ Link user + AI message as a pair
-      await fetch("/api/add-message-pair", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          convoId,
-          userMessageId,
-          aiResponseId,
-        }),
-      });
-
-      await fetchUserChats();
-    } catch (err) {
-      console.error("IMAGE GEN ERROR:", err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "bot",
-          text: "⚠️ Failed to generate image. Try again.",
-          isImg: false,
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // const sendMessage = async () => {
   //   if (!input.trim()) return;
@@ -460,7 +330,7 @@ export default function AskDoubtClient() {
     if (!userEmail) {
       setMessages((prev) => [
         ...prev,
-        { role: "bot", text: "❗ Please login,", isImg: false },
+        { role: "bot", text: "❗ Please login" },
       ]);
       return;
     }
@@ -472,7 +342,6 @@ export default function AskDoubtClient() {
       roomId: convoId,
       senderEmail: userEmail,
       text: input,
-      isImg: false,
     });
     setInput("");
     setLoading(true);
@@ -487,7 +356,6 @@ export default function AskDoubtClient() {
           senderName: userEmail,
           text: input,
           role: "user",
-          isImg: false,
         }),
       });
 
@@ -508,7 +376,6 @@ export default function AskDoubtClient() {
         roomId: convoId,
         senderEmail: "AI",
         text: aiText,
-        isImg: false,
       });
       setLoading(false);
       // 5️⃣ Save AI response in DB
@@ -540,11 +407,7 @@ export default function AskDoubtClient() {
       setError("Something went wrong. Try again.");
       setMessages((prev) => [
         ...prev,
-        {
-          role: "bot",
-          text: "⚠️ Server error. Please try again later.",
-          isImg: false,
-        },
+        { role: "bot", text: "⚠️ Server error. Please try again later." },
       ]);
     } finally {
       setLoading(false);
@@ -645,24 +508,23 @@ export default function AskDoubtClient() {
     if (!userEmail) {
       setMessages((prev) => [
         ...prev,
-        { role: "bot", text: "❗ Please login to use chat.", isImg: false },
+        { role: "bot", text: "❗ Please login to use chat." },
       ]);
       return;
     }
 
-    // 1️⃣ Remove all messages below the edited one
+    // 1️⃣ Optimistically remove all messages below the edited one
     setMessages((prev) => prev.slice(0, editIndex + 1));
 
-    // 2️⃣ Insert updated user message immediately
-    const updatedUserMsg = { role: "user", text, isImg: false };
+    // 2️⃣ Add updated user message immediately
+    const updatedUserMsg = { role: "user", text };
     setMessages((prev) => [...prev.slice(0, editIndex), updatedUserMsg]);
-
     setInput("");
     setLoading(true);
     setError("");
 
     try {
-      // 🔹 Delete old messages from DB
+      // 🔹 Delete old messages from backend (those below current index)
       await fetch("/api/delete-below", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -685,16 +547,16 @@ export default function AskDoubtClient() {
 
       const { insertedId: userMessageId } = await userRes.json();
 
-      // 🔹 Fetch fresh AI response
+      // 🔹 Fetch new AI response
       const aiRes = await axios.post("https://askdemia1.onrender.com/chat", {
         user_id: userEmail,
         message: text,
       });
 
       const aiText = aiRes?.data?.response || "Unexpected response format.";
-      const aiMessage = { role: "bot", text: aiText, isImg: false };
+      const aiMessage = { role: "bot", text: aiText };
 
-      // 3️⃣ Add AI message
+      // 3️⃣ Add AI message to UI immediately
       setMessages((prev) => [...prev, aiMessage]);
       setLoading(false);
 
@@ -725,14 +587,10 @@ export default function AskDoubtClient() {
       console.error("Error resending message:", err);
       setError("Something went wrong. Try again.");
 
-      // 4️⃣ Add error message
+      // 4️⃣ Show error response in UI
       setMessages((prev) => [
         ...prev,
-        {
-          role: "bot",
-          text: "⚠️ Server error. Please try again later.",
-          isImg: false,
-        },
+        { role: "bot", text: "⚠️ Server error. Please try again later." },
       ]);
     }
 
@@ -758,20 +616,14 @@ export default function AskDoubtClient() {
       const result = await res.json();
 
       if (result.success) {
-        // Update local UI text + preserve isImg: false
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === editingIndex
-              ? { ...msg, text: editingText, isImg: false }
-              : msg
+            msg.id === editingIndex ? { ...msg, text: editingText } : msg
           )
         );
-
-        const oldIndex = editingIndex;
         setEditingIndex(null);
-
-        // Send updated message as new flow
-        await resendEditedMessage(editingText, oldIndex);
+        // Send it as a new message flow
+        await resendEditedMessage(editingText);
       } else {
         alert("Edit failed: " + result.message);
       }
@@ -783,22 +635,15 @@ export default function AskDoubtClient() {
     setEditingIndex(null);
     setEditingText("");
   };
-
+  
   // handling the deletion of a message
   const handleDeleteMessage = async (id) => {
     setMessages((prev) => {
       const idx = prev.findIndex((msg) => msg.id === id);
       if (idx === -1) return prev;
 
-      const idsToRemove = [];
-
-      // Remove this message
-      if (prev[idx]?.id) idsToRemove.push(prev[idx].id);
-
-      // Remove paired message (next one) only if it has a real ID
-      if (idx + 1 < prev.length && prev[idx + 1]?.id) {
-        idsToRemove.push(prev[idx + 1].id);
-      }
+      const idsToRemove = [id];
+      if (idx + 1 < prev.length) idsToRemove.push(prev[idx + 1].id);
 
       return prev.filter((msg) => !idsToRemove.includes(msg.id));
     });
@@ -812,7 +657,6 @@ export default function AskDoubtClient() {
           convoId,
         }),
       });
-
       console.log("Deleted completely");
     } catch (err) {
       console.error("Delete failed:", err);

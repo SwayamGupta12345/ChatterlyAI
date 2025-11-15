@@ -1390,7 +1390,7 @@ export default function AskDoubtClient() {
                                         position: "relative",
                                         marginBottom: "1rem",
                                       }}
-                                    >
+                                    > 
                                       <pre className="bg-blue-500 text-white p-4 rounded-md overflow-x-auto text-sm">
                                         <code>
                                           {typeof children === "string"

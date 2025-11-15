@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 export async function GET(req) {
   try { 
     const { searchParams } = new URL(req.url);
-    const convoId = searchParams.get("convoId");
+    const convoId = searchParams.get("convoId"); 
 
     if (!convoId || !ObjectId.isValid(convoId)) {
       return NextResponse.json(

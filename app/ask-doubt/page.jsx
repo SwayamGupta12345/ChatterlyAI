@@ -119,7 +119,7 @@
 //       const { insertedId: userMessageId } = await userRes.json();
 
 //       // 2. Get AI response
-//       const aiRes = await axios.post("https://askdemia1.onrender.com/chat", {
+//       const aiRes = await axios.post(process.env.AGENTIC_BACKEND + "/chat", {
 //         user_id: userEmail,
 //         message: input,
 //       });

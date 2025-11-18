@@ -441,12 +441,7 @@ export default function AskDoubtClient() {
       });
 
       const { insertedId: userMessageId } = await userRes.json();
-
-      // // 3️⃣ Get AI response from your backend
-      // const aiRes = await axios.post("https://chatterly-agentic.onrender.com/chat", {
-      //   user_id: userEmail,
-      //   message: input,
-      // });
+      // 3️⃣ Call AI API to get response
       const aiRes = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/chat`,
         {
@@ -965,69 +960,6 @@ export default function AskDoubtClient() {
   return (
     <Suspense
       fallback={
-        // <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 relative">
-        //   {/* Sidebar */}
-        //   <div
-        //     className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${
-        //       isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        //     } lg:translate-x-0`}
-        //   >
-        //     <div className="p-6">
-        //       <div className="flex items-center justify-between mb-8">
-        //         <div className="flex items-center space-x-2">
-        //           <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-        //             <BookOpen className="w-5 h-5 text-white" />
-        //           </div>
-        //           <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-        //             Chatterly
-        //           </span>
-        //         </div>
-
-        //         {/* Close button pushed to the right */}
-        //         <div className="flex-1 flex justify-end lg:hidden">
-        //           <button
-        //             onClick={() => setIsSidebarOpen(false)}
-        //             className="p-1 hover:bg-gray-200 rounded-md"
-        //           >
-        //             <X className="w-5 h-5 text-gray-600" />
-        //           </button>
-        //         </div>
-        //       </div>
-
-        //       <nav className="space-y-2">
-        //         <Link
-        //           href="/dashboard"
-        //           className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-        //         >
-        //           <LayoutDashboard className="w-5 h-5" />
-        //           <span>Dashboard</span>
-        //         </Link>
-        //         <Link
-        //           href="/ask-doubt"
-        //           className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl"
-        //         >
-        //           <Lightbulb className="w-5 h-5" />
-        //           <span>Chat</span>
-        //         </Link>
-
-        //         <Link
-        //           href="/chat"
-        //           className="flex items-center space-x-3 px-4 py-3 bg-purple-100 text-purple-700 rounded-xl transition-colors"
-        //         >
-        //           <MessageCircleMore className="w-5 h-5" />
-        //           <span>Chat with Friends</span>
-        //         </Link>
-        //         {/* <Link
-        //       href="https://v0.dev/"
-        //       className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-        //     >
-        //       <Sparkles className="w-5 h-5" />
-        //       <span>Webapp Builder</span>
-        //     </Link> */}
-        //       </nav>
-        //     </div>
-        //   </div>
-        // </div>
         <FallbackLayout
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
@@ -1280,11 +1212,6 @@ export default function AskDoubtClient() {
                     <span className="hidden sm:inline">Share</span>
                   </button>
                 )}
-
-                {/* <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
-                  <Bell className="w-6 h-6 text-gray-600" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-                </button> */}
                 <Link href="/profile">
                   <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center cursor-pointer">
                     <User className="w-5 h-5 text-white" />
@@ -1395,11 +1322,15 @@ export default function AskDoubtClient() {
                     <div
                       className={`px-4 py-3 rounded-xl shadow-md break-words ${
                         msg.role === "user"
-                          ? "bg-purple-100 text-pretty rounded-br-none max-w-[70%] sm:max-w-md user-markdown"
-                          : "bg-blue-100 text-left rounded-bl-none max-w-[90%] sm:max-w-2xl overflow-x-auto"
+                          ? "bg-purple-100 text-pretty rounded-br-none max-w-[70%] sm:max-w-md"
+                          : "bg-blue-100 rounded-bl-none max-w-[90%] sm:max-w-2xl overflow-x-auto"
                       }`}
                     >
-                      <div className="text-xs font-semibold mb-1">
+                      <div
+                        className={`text-xs font-semibold mb-1 ${
+                          msg.role === "user" ? "text-right" : "text-left"
+                        }`}
+                      >
                         {msg.role === "user" ? "You" : "Bot"}
                       </div>
 
@@ -1470,7 +1401,33 @@ export default function AskDoubtClient() {
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
-                                p: ({ children }) => <p>{children}</p>,
+                                // p: ({ children }) => <p >{children}</p>,
+                                p: ({ children }) => {
+                                  // Flatten children to plain text
+                                  const text = Array.isArray(children)
+                                    ? children
+                                        .map((c) =>
+                                          typeof c === "string" ? c : ""
+                                        )
+                                        .join("")
+                                    : typeof children === "string"
+                                    ? children
+                                    : "";
+
+                                  // Short message → fully right-aligned for user
+                                  if (
+                                    msg.role === "user" &&
+                                    text.length <= 64
+                                  ) {
+                                    return (
+                                      <p className="mb-1 text-right">{text}</p>
+                                    );
+                                  }
+
+                                  // Long message → normal wrap (text-pretty)
+                                  return <p className="mb-1">{text}</p>;
+                                },
+
                                 img: ({ src, alt }) => (
                                   <img
                                     src={src}

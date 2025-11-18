@@ -125,15 +125,26 @@ export default function AskDoubtClient() {
       });
     });
 
-    // ✅ new message listener
-    socket.current.on("receive-message", ({ chatboxId, senderEmail, text }) => {
-      // Push message to UI instantly
-      if (!text.trim()) return;
-      setMessages((prev) => [
-        ...prev,
-        { role: senderEmail === "AI" ? "bot" : "user", text },
-      ]);
-    });
+    // // ✅ new message listener
+    // socket.current.on("receive-message", ({ chatboxId, senderEmail, text }) => {
+    //   // Push message to UI instantly
+    //   if (!text.trim()) return;
+    //   setMessages((prev) => [
+    //     ...prev,
+    //     { role: senderEmail === "AI" ? "bot" : "user", text },
+    //   ]);
+    // });
+    socket.current.on(
+      "receive-message",
+      ({ chatboxId, senderEmail, text, imageUrl, isImg }) => {
+        const role = senderEmail === "AI" ? "bot" : "user";
+
+        setMessages((prev) => [
+          ...prev,
+          isImg ? { role, image: imageUrl, isImg: true, text } : { role, text },
+        ]);
+      }
+    );
 
     return () => {
       socket.current.disconnect();
@@ -631,10 +642,13 @@ export default function AskDoubtClient() {
       const { insertedId: userMessageId } = await userRes.json();
 
       // 🔹 Fetch new AI response
-      const aiRes = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/chat`, {
-        user_id: userEmail,
-        message: text,
-      });
+      const aiRes = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/chat`,
+        {
+          user_id: userEmail,
+          message: text,
+        }
+      );
 
       const aiText = aiRes?.data?.response || "Unexpected response format.";
       const aiMessage = { role: "bot", text: aiText };

@@ -266,7 +266,7 @@ export default function AskDoubtClient() {
 
       const { insertedId: userMessageId } = await userRes.json();
 
-      // 3️⃣ Call your HF image API
+      // 3️⃣ Call HF API and get base64
       const imgRes = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -275,26 +275,10 @@ export default function AskDoubtClient() {
 
       const imgData = await imgRes.json();
       const base64Image = imgData.image;
+      console.log("BASE64 IMAGE:", base64Image);
+      console.log("image DATA:", imgData);
 
-      // 4️⃣ Add AI image message in UI
-      const aiMessage = {
-        role: "bot",
-        text: prompt, // keeping same format as your AI text
-        image: base64Image,
-        isImg: true,
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-      setLoading(false);
-      socket.current.emit("send-message", {
-        roomId: convoId,
-        senderEmail: "AI",
-        text: prompt,
-        image: base64Image,
-        isImg: true,
-      });
-
-      // 5️⃣ Save AI message in DB
+      // 5️⃣ Save AI message (backend uploads to Cloudinary)
       const aiSave = await fetch("/api/Save-Message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -306,8 +290,28 @@ export default function AskDoubtClient() {
           image: base64Image,
         }),
       });
+      console.log("AI SAVE RESPONSE:", aiSave);
 
-      const { insertedId: aiResponseId } = await aiSave.json();
+      const { insertedId: aiResponseId, imageUrl } = await aiSave.json();
+
+      // 4️⃣ UI update using Cloudinary URL
+      const aiMessage = {
+        role: "bot",
+        text: prompt,
+        imageUrl: imageUrl,
+        isImg: true,
+      };
+      console.log("AI MESSAGE:", aiMessage);
+      setMessages((prev) => [...prev, aiMessage]);
+      console.log("IMAGE URL:", imageUrl);
+      // 🔥 FIXED socket emit → uses Cloudinary URL
+      socket.current.emit("send-message", {
+        roomId: convoId,
+        senderEmail: "AI",
+        text: prompt,
+        imageUrl: imageUrl,
+        isImg: true,
+      });
 
       // 6️⃣ Link user + AI message as a pair
       await fetch("/api/add-message-pair", {

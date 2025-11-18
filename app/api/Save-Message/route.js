@@ -6,7 +6,7 @@
 // import { ObjectId } from 'mongodb';
 
 // export async function POST(req) {
-//   try { 
+//   try {
 //     const { senderName, text, role } = await req.json();
 
 //     if (!senderName || !text || !role) {
@@ -68,7 +68,10 @@ export async function POST(req) {
       timestamp: new Date(),
     });
 
-    return NextResponse.json({ insertedId: result.insertedId });
+    return NextResponse.json({
+      insertedId: result.insertedId,
+      imageUrl: imageUrl,
+    });
   } catch (error) {
     console.error("Error in /api/save-message:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

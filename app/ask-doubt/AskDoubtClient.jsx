@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
-  Lightbulb,
+  Lightbulb, 
   Menu,
   X,
   User,
@@ -1401,7 +1401,33 @@ export default function AskDoubtClient() {
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
-                                // p: ({ children }) => <p >{children}</p>,
+                                                               // // p: ({ children }) => <p  >{children}</p>,
+                                p: ({ children }) => {
+                                  // Flatten children to plain text
+                                  const text = Array.isArray(children)
+                                    ? children
+                                        .map((c) =>
+                                          typeof c === "string" ? c : ""
+                                        )
+                                        .join("")
+                                    : typeof children === "string"
+                                    ? children
+                                    : "";
+
+                                  // Short message → fully right-aligned for user
+                                  if (
+                                    msg.role === "user" &&
+                                    text.length <= 64
+                                  ) {
+                                    return (
+                                      <p className="mb-1 text-right">{text}</p>
+                                    );
+                                  }
+
+                                  // Long message → normal wrap (text-pretty)
+                                  return <p className="mb-1">{text}</p>;
+                                },
+
                                 p: ({ children }) => {
                                   // Flatten children to plain text
                                   const text = Array.isArray(children)

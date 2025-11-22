@@ -653,14 +653,14 @@ export default function AskDoubtClient() {
 
     try {
       // 🔹 Delete old messages from backend (those below current index)
-      await fetch("/api/delete-below", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          convoId,
-          index: editIndex,
-        }),
-      });
+      // await fetch("/api/delete-below", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     convoId,
+      //     index: editIndex,
+      //   }),
+      // });
 
       // 🔹 Save updated user message
       const userRes = await fetch("/api/Save-Message", {

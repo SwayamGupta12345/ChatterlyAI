@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BookOpen,
-  Lightbulb, 
+  Lightbulb,
   Menu,
   X,
   User,
@@ -610,12 +610,17 @@ export default function AskDoubtClient() {
     }
 
     // 1️⃣ Optimistically remove all messages below the edited one
-    setMessages((prev) => prev.slice(0, editIndex + 1));
 
-    // 2️⃣ Add updated user message immediately
-    const updatedUserMsg = { role: "user", text };
-    setMessages((prev) => [...prev.slice(0, editIndex), updatedUserMsg]);
-    // 🔥 Broadcast updated user message to room
+    const index = messages.findIndex((m) => m.id === editingIndex);
+    if (index === -1) return;
+
+    // 1️⃣ Remove all messages below edited one
+    setMessages((prev) => prev.slice(0, index + 1));
+
+    // 2️⃣ Replace the edited user message in position
+    const updatedUserMsg = { id: editingIndex, role: "user", text };
+    setMessages((prev) => [...prev.slice(0, index), updatedUserMsg]);
+    // 3️⃣ Broadcast
     socket.current.emit("send-message", {
       roomId: convoId,
       senderEmail: userEmail,
@@ -1401,7 +1406,7 @@ export default function AskDoubtClient() {
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={{
-                                                               // // p: ({ children }) => <p  >{children}</p>,
+                                // // p: ({ children }) => <p  >{children}</p>,
                                 p: ({ children }) => {
                                   // Flatten children to plain text
                                   const text = Array.isArray(children)

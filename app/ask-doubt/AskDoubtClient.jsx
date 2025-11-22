@@ -1437,7 +1437,7 @@ export default function AskDoubtClient() {
                                   onClick={confirmEditMessage}
                                   className="text-green-600 hover:text-green-700 font-medium"
                                 >
-                                  Save
+                                  Send
                                 </button>
                                 <button
                                   onClick={() => {

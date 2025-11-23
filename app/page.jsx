@@ -410,14 +410,14 @@ export default function LandingPage() {
             <div>
               <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">About Us</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Features</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Contact</a></li>
+                <li><a href="#testimonials" className="text-gray-300 hover:text-white transition-colors">About Us</a></li>
+                <li><a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a></li>
+                {/* <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Pricing</a></li> */}
+                {/* <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Contact</a></li> */}
               </ul>
             </div>
 
-            <div>
+            {/* <div>
               <h3 className="text-lg font-semibold mb-4">Support</h3>
               <ul className="space-y-2">
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Help Center</a></li>
@@ -425,7 +425,7 @@ export default function LandingPage() {
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Terms of Service</a></li>
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">FAQ</a></li>
               </ul>
-            </div>
+            </div> */}
           </div>
 
           <div className="border-t border-white/10 mt-12 pt-8 text-center text-gray-300">

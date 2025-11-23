@@ -400,7 +400,7 @@ export default function LandingPage() {
                         LinkedIn
                       </a>
                       <a
-                        href="https://mail.google.com/mail/u/0/?view=cm&fs=1&to=swayamsam2005@gmail.com" target="_blank"
+                        href="https://mail.google.com/mail/u/0/?view=cm&fs=1&to=rishugoyal6800@gmail.com" target="_blank"
                         className="flex items-center hover:text-white transition-colors"
                       >
                         <Mail className="w-4 h-4 mr-1" />

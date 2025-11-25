@@ -1,65 +1,130 @@
-"use client"
+// "use client"
 
-import { useEffect, useState } from "react"
-import { Eye, EyeOff, BookOpen, ArrowLeft } from "lucide-react"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+// import { useEffect, useState } from "react"
+// import { Eye, EyeOff, BookOpen, ArrowLeft } from "lucide-react"
+// import Link from "next/link"
+// import { useRouter, useSearchParams } from "next/navigation"
+// import { signIn } from "next-auth/react";
+
+// export default function LoginPage() {
+//   const [formData, setFormData] = useState({
+//     email: "",
+//     password: "",
+//   })
+//   const [showPassword, setShowPassword] = useState(false)
+//   const [isEmailLoading, setIsEmailLoading] = useState(false)
+//   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+//   const [error, setError] = useState("")
+//   const router = useRouter()
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault()
+//     setIsEmailLoading(true)
+//     setError("")
+
+//     try {
+//       const response = await fetch("/api/login", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify(formData),
+//       })
+
+//       const data = await response.json()
+
+//       if (response.ok) {
+//         router.push("/dashboard")
+//       }
+//       else {
+//         setError(data.message || "Login failed")
+//       }
+//     } catch (err) {
+//       setError("Network error. Please try again.")
+//     } finally {
+//       setIsEmailLoading(false)
+//     }
+//   }
+//   const handleGoogleLogin = () => {
+//     setIsGoogleLoading(true)
+//     signIn("google", { callbackUrl: `${window.location.origin}/dashboard` });
+//     // const callbackUrl = process.env.NODE_ENV === "production"
+//     //   ? `${window.location.origin}/dashboard`
+//     //   : "http://localhost:3000/dashboard";
+//     signIn("google", { callbackUrl, redirect: true });
+//   }
+
+//   const handleChange = (e) => {
+//     setFormData({
+//       ...formData,
+//       [e.target.name]: e.target.value,
+//     })
+//   }
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, BookOpen, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isEmailLoading, setIsEmailLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  const [error, setError] = useState("")
-  const router = useRouter()
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsEmailLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsEmailLoading(true);
+    setError("");
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        router.push("/dashboard")
+      // Use NextAuth credentials sign-in (no UI change)
+      const res = await signIn("credentials", {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+        callbackUrl: "/dashboard",
+      });
+      if (!res) {
+        setError("Something went wrong");
+        return;
       }
+
+      if (res?.error) {
+        setError(res.error || "Login failed");
+      } 
       else {
-        setError(data.message || "Login failed")
+        // success
+        router.push("/dashboard");
       }
     } catch (err) {
-      setError("Network error. Please try again.")
+      console.error("SignIn error:", err);
+      setError("Network error. Please try again.");
     } finally {
-      setIsEmailLoading(false)
+      setIsEmailLoading(false);
     }
-  }
+  };
+
   const handleGoogleLogin = () => {
-    setIsGoogleLoading(true)
+    setIsGoogleLoading(true);
+    // Single call, fixed callback URL
     signIn("google", { callbackUrl: `${window.location.origin}/dashboard` });
-    // const callbackUrl = process.env.NODE_ENV === "production"
-    //   ? `${window.location.origin}/dashboard`
-    //   : "http://localhost:3000/dashboard";
-    signIn("google", { callbackUrl, redirect: true });
-  }
+  };
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    })
-  }
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -85,18 +150,25 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
               Welcome Back
             </h1>
-            <p className="text-gray-600">Sign in to continue your learning journey</p>
+            <p className="text-gray-600">
+              Sign in to continue your learning journey
+            </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">{error}</div>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">
+              {error}
+            </div>
           )}
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <input
@@ -112,7 +184,10 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
@@ -131,17 +206,27 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <label className="flex items-center">
-                <input type="checkbox" className="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
                 <span className="ml-2 text-sm text-gray-600">Remember me</span>
               </label>
-              <a href="#" className="text-sm text-purple-600 hover:text-purple-700 transition-colors">
+              <a
+                href="#"
+                className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
+              >
                 Forgot password?
               </a>
             </div>
@@ -185,13 +270,15 @@ export default function LoginPage() {
                 </>
               )}
             </button>
-
           </div>
           {/* Sign Up Link */}
           <div className="text-center mt-8">
             <p className="text-gray-600">
               Don't have an account?{" "}
-              <Link href="/signup" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors">
+              <Link
+                href="/signup"
+                className="text-purple-600 hover:text-purple-700 font-semibold transition-colors"
+              >
                 Sign up here
               </Link>
             </p>
@@ -199,5 +286,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

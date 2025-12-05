@@ -1468,10 +1468,15 @@ export default function AskDoubtClient() {
                         <button
                           onClick={() => handleSendShare("gmail")}
                           className="flex items-center justify-center sm:justify-start 
-                     text-sm bg-blue-600 text-white px-3 py-2 rounded-lg 
-                     hover:bg-blue-700 transition w-full sm:w-auto"
+                     text-sm bg-gray-600 text-white px-3 py-2 rounded-lg 
+                     hover:bg-gray-700 transition w-full sm:w-auto"
                         >
-                          <Mail className="w-4 h-4 mr-2" />
+                          <img
+                            src="/gmail.png" // make sure this path is correct in your public folder
+                            alt="Gmail"
+                            className="w-4 h-4 mr-2"
+                          />
+                          {/* <Mail className="w-4 h-4 mr-2" /> */}
                           Gmail
                         </button>
 

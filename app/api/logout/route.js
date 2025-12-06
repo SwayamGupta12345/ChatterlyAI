@@ -2,19 +2,22 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 export async function POST() {
-  const res = new NextResponse(JSON.stringify({ message: "Logged out successfully" }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  const response = NextResponse.json(
+    { message: "Logged out successfully" },
+    { status: 200 }
+  );
 
-  // ✅ Get cookie store first
   const cookieStore = cookies();
 
-  // ✅ Clear the token cookie
-  res.cookies.set("auth_token", "", {
-    maxAge: 0,
-    path: "/",
-  });
+  // Remove ALL your app cookies here
+  const allCookies = cookieStore.getAll();
 
-  return res;
+  for (const c of allCookies) {
+    response.cookies.set(c.name, "", {
+      expires: new Date(0),
+      path: "/",
+    });
+  }
+
+  return response;
 }

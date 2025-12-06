@@ -1041,16 +1041,7 @@ export default function AskDoubtClient() {
     speechSynthesis.speak(utterance);
   };
 
-  // handling the logout of a user
-  // const handleLogout = async () => {
-  //   try {
-  //      const res =await fetch("/api/logout", { method: "POST" });
 
-  //     router.push("/login"); // Or "/"
-  //   } catch (err) {
-  //     console.error("Logout failed", err);
-  //   }
-  // };
   // handling the logout of a user
   const handleLogout = async () => {
     try {
@@ -1060,8 +1051,9 @@ export default function AskDoubtClient() {
         // Clear LocalStorage
         localStorage.removeItem("auth_token");
         localStorage.clear(); // optional: clears all keys
-
+        sessionStorage.clear();
         // Optional: redirect user
+        window.location.href = "/login";
         router.push("/login");
       }
     } catch (err) {

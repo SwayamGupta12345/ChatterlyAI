@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import bcrypt from "bcryptjs";  // npm install bcryptjs
+import bcrypt from "bcryptjs"; // npm install bcryptjs
 import jwt from "jsonwebtoken"; // npm install jsonwebtoken
 
 export async function POST(req) {
@@ -8,15 +8,23 @@ export async function POST(req) {
     const { email, password } = await req.json();
 
     if (!email || !password) {
-      return NextResponse.json({ message: "Email and password required" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Email and password required" },
+        { status: 400 }
+      );
     }
+    const rawName = email.split("@")[0];
+    const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
 
     const { db } = await connectToDatabase();
 
     // Check if user exists
     const existingUser = await db.collection("users").findOne({ email });
     if (existingUser) {
-      return NextResponse.json({ message: "Email already in use" }, { status: 409 });
+      return NextResponse.json(
+        { message: "Email already in use" },
+        { status: 409 }
+      );
     }
 
     // Hash password
@@ -27,8 +35,7 @@ export async function POST(req) {
       email,
       password: hashedPassword,
       createdAt: new Date(),
-      name: "",
-      nickname: "", 
+      name: name,
       chats_arr: [],
       frnd_arr: [],
     });
@@ -43,6 +50,9 @@ export async function POST(req) {
     return NextResponse.json({ token });
   } catch (error) {
     console.error("Signup error:", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

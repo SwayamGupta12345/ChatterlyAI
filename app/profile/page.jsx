@@ -95,16 +95,7 @@ export default function ProfilePage() {
     });
   };
 
-  // const handleLogout = async () => {
-  //   try {
-  //     await fetch("/api/logout", { method: "POST" });
-  //     localStorage.removeItem("token")
-  //     router.push("/login"); // Or "/"
-  //   } catch (err) {
-  //     console.error("Logout failed", err);
-  //   }
-  // };
-  // handling the logout of a user
+ 
   const handleLogout = async () => {
     try {
       const res = await fetch("/api/logout", { method: "POST" });
@@ -113,6 +104,8 @@ export default function ProfilePage() {
         // Clear LocalStorage
         localStorage.removeItem("auth_token");
         localStorage.clear(); // optional: clears all keys
+        sessionStorage.clear();
+        window.location.href = "/login";
         router.push("/login");
         // Optional: redirect user
         // window.location.href = "/login";

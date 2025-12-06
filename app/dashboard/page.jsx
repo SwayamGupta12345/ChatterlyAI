@@ -86,14 +86,7 @@ export default function Dashboard() {
     checkAuth();
   }, []);
 
-  // const handleLogout = async () => {
-  //   try {
-  //     await fetch("/api/logout", { method: "POST" });
-  //     router.push("/login"); // Or "/"
-  //   } catch (err) {
-  //     console.error("Logout failed", err);
-  //   }
-  // };
+
   // handling the logout of a user
   const handleLogout = async () => {
     try {
@@ -103,6 +96,8 @@ export default function Dashboard() {
         // Clear LocalStorage
         localStorage.removeItem("auth_token");
         localStorage.clear(); // optional: clears all keys
+        sessionStorage.clear();
+        window.location.href = "/login";
         router.push("/login");
         // Optional: redirect user
         // window.location.href = "/login";
@@ -124,8 +119,9 @@ export default function Dashboard() {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0`}
+        className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0`}
       >
         <div className="p-6">
           <div className="flex items-center space-x-2 mb-8 py-3 px-4">
@@ -284,7 +280,9 @@ export default function Dashboard() {
                 {filteredFriends.map((f) => (
                   <div
                     key={f.chatbox_id}
-                    onClick={() => router.push(`/chat?chatboxId=${f.chatbox_id}`)}
+                    onClick={() =>
+                      router.push(`/chat?chatboxId=${f.chatbox_id}`)
+                    }
                     className="p-3 bg-white/50 hover:bg-white/70 cursor-pointer rounded-xl border border-white/20 flex justify-between items-center"
                   >
                     <span className="font-medium">{f.name || f.email}</span>

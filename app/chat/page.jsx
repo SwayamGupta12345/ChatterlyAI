@@ -32,9 +32,7 @@ export default function AskDoubtPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-4 text-center text-gray-600">
-          Loading chat...
-        </div>
+        <div className="p-4 text-center text-gray-600">Loading chat...</div>
       }
     >
       <ChatPageInner />
@@ -121,7 +119,9 @@ function ChatPageInner() {
       // ✅ Prefer chatboxId from URL, else fallback to last stored
       const chatboxIdFromUrl = searchParams.get("chatboxId");
       if (chatboxIdFromUrl) {
-        const fromUrl = data.friends.find((f) => f.chatbox_id === chatboxIdFromUrl);
+        const fromUrl = data.friends.find(
+          (f) => f.chatbox_id === chatboxIdFromUrl
+        );
         if (fromUrl) {
           handleFriendSelect(fromUrl);
           return;
@@ -546,7 +546,14 @@ function ChatPageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userEmail, friendEmail, friendName }),
       });
-      console.log("userEmail:", userEmail, "friendEmail:", friendEmail, "friendName:", friendName);
+      console.log(
+        "userEmail:",
+        userEmail,
+        "friendEmail:",
+        friendEmail,
+        "friendName:",
+        friendName
+      );
       const data = await res.json();
 
       if (data.success) {
@@ -718,16 +725,7 @@ function ChatPageInner() {
     }
   };
 
-  // const handleLogout = async () => {
-  //   try {
-  //     await fetch("/api/logout", { method: "POST" });
-  //     localStorage.removeItem("lastChatboxId");
-  //     localStorage.removeItem("email");
-  //     router.push("/login"); // Or "/"
-  //   } catch (err) {
-  //     console.error("Logout failed", err);
-  //   }
-  // };
+
   // handling the logout of a user
   const handleLogout = async () => {
     try {
@@ -737,6 +735,8 @@ function ChatPageInner() {
         // Clear LocalStorage
         localStorage.removeItem("auth_token");
         localStorage.clear(); // optional: clears all keys
+        sessionStorage.clear();
+        window.location.href = "/login";
         router.push("/login");
         // Optional: redirect user
         // window.location.href = "/login";
@@ -774,8 +774,9 @@ function ChatPageInner() {
       {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0`}
+        className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0`}
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-8">
@@ -893,13 +894,15 @@ function ChatPageInner() {
                         setEditingFriendId(frnd.chatbox_id);
                         setEditedFriendName(frnd.name || "");
                       }}
-                      className={`w-full text-left px-4 py-2 rounded-xl transition-colors transform duration-300 ${selectedFriend?.chatbox_id === frnd.chatbox_id
-                        ? "bg-purple-200 text-purple-800"
-                        : "hover:bg-gray-100 text-gray-700"
-                        } ${updatedChatboxId === frnd.chatbox_id
+                      className={`w-full text-left px-4 py-2 rounded-xl transition-colors transform duration-300 ${
+                        selectedFriend?.chatbox_id === frnd.chatbox_id
+                          ? "bg-purple-200 text-purple-800"
+                          : "hover:bg-gray-100 text-gray-700"
+                      } ${
+                        updatedChatboxId === frnd.chatbox_id
                           ? "scale-[1.03] shadow-md"
                           : ""
-                        }`}
+                      }`}
                     >
                       <span className="block truncate max-w-[75%]  items-center gap-1">
                         <span>{frnd.name || frnd.email}</span>
@@ -927,10 +930,11 @@ function ChatPageInner() {
                           prev === frnd.chatbox_id ? null : frnd.chatbox_id
                         );
                       }}
-                      className={`p-1 rounded transition-colors ${menuOpenId === frnd.chatbox_id
-                        ? "bg-gray-200"
-                        : "hover:bg-gray-100"
-                        }`}
+                      className={`p-1 rounded transition-colors ${
+                        menuOpenId === frnd.chatbox_id
+                          ? "bg-gray-200"
+                          : "hover:bg-gray-100"
+                      }`}
                     >
                       <EllipsisVertical size={16} />
                     </button>
@@ -1058,23 +1062,25 @@ function ChatPageInner() {
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex ${msg.senderEmail === userEmail
-                    ? "justify-end"
-                    : "justify-start"
-                    }`}
+                  className={`flex ${
+                    msg.senderEmail === userEmail
+                      ? "justify-end"
+                      : "justify-start"
+                  }`}
                 >
                   <div
-                    className={`px-4 py-3 rounded-xl shadow-md max-w-[100vw] md:max-w-md ${msg.senderEmail === userEmail
-                      ? "bg-purple-100 text-right rounded-br-none"
-                      : "bg-blue-100 text-left rounded-bl-none self-start"
-                      }`}
+                    className={`px-4 py-3 rounded-xl shadow-md max-w-[100vw] md:max-w-md ${
+                      msg.senderEmail === userEmail
+                        ? "bg-purple-100 text-right rounded-br-none"
+                        : "bg-blue-100 text-left rounded-bl-none self-start"
+                    }`}
                   >
                     <div className="text-xs font-semibold text-gray-600 mb-1">
                       {msg.senderEmail === userEmail
                         ? "You"
                         : selectedFriend?.name ||
-                        selectedFriend?.email ||
-                        "Friend"}
+                          selectedFriend?.email ||
+                          "Friend"}
                     </div>
 
                     <div className="markdown-content text-sm text-gray-800 max-w-[90vw] md:max-w-md overflow-x-auto whitespace-pre-wrap break-words">
@@ -1157,8 +1163,8 @@ function ChatPageInner() {
                                       {typeof children === "string"
                                         ? children
                                         : Array.isArray(children)
-                                          ? children.join("")
-                                          : ""}
+                                        ? children.join("")
+                                        : ""}
                                     </code>
                                   </pre>
                                   <div
@@ -1315,10 +1321,11 @@ function ChatPageInner() {
                 />
                 <button
                   onClick={sendMessage}
-                  className={`bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full transition ${!input.trim()
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:opacity-90"
-                    }`}
+                  className={`bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full transition ${
+                    !input.trim()
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:opacity-90"
+                  }`}
                 >
                   <Send className="w-4 h-4" />
                 </button>

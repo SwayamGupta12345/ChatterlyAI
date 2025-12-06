@@ -60,7 +60,7 @@ export default function AskDoubtClient() {
   const [user_ai_chats, setUser_ai_chats] = useState([]);
   const [chatToDelete, setChatToDelete] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
-
+  const [user, setUser] = useState({ name: "", image: "" });
   const [editingChatId, setEditingChatId] = useState(null);
   const [newChatName, setNewChatName] = useState("");
 
@@ -160,6 +160,22 @@ export default function AskDoubtClient() {
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpenId]);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const session = await getSession();
+      if (!session || !session.user) {
+        router.push("/login");
+        return;
+      } else {
+        setUser({
+          name: session.user.name || "",
+          image: session.user.image || "",
+        });
+      }
+    };
+    checkAuth();
+  }, []);
 
   // ✅ Get email from localStorage
   useEffect(() => {
@@ -1041,7 +1057,6 @@ export default function AskDoubtClient() {
     speechSynthesis.speak(utterance);
   };
 
-
   // handling the logout of a user
   const handleLogout = async () => {
     try {
@@ -1394,9 +1409,24 @@ export default function AskDoubtClient() {
                     <span className="hidden sm:inline">Share</span>
                   </button>
                 )}
-                <Link href="/profile">
+                {/* <Link href="/profile">
                   <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center cursor-pointer">
                     <User className="w-5 h-5 text-white" />
+                  </div>
+                </Link> */}
+                <Link href="/profile">
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-300 cursor-pointer">
+                    {user?.image ? (
+                      <img
+                        src={user.image}
+                        alt="User"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                    )}
                   </div>
                 </Link>
               </div>

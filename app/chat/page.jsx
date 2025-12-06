@@ -56,6 +56,7 @@ function ChatPageInner() {
   const [chatboxId, setChatboxId] = useState(null); // current chatbox ID
   const [friends, setFriends] = useState([]);
   const [userEmail, setUserEmail] = useState("");
+  const [user, setUser] = useState({ name: "", image: "" });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const socket = useRef(null);
@@ -100,6 +101,22 @@ function ChatPageInner() {
       }
     };
     fetchSession();
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const session = await getSession();
+      if (!session || !session.user) {
+        router.push("/login");
+        return;
+      } else {
+        setUser({
+          name: session.user.name || "",
+          image: session.user.image || "",
+        });
+      }
+    };
+    checkAuth();
   }, []);
 
   useEffect(() => {
@@ -725,7 +742,6 @@ function ChatPageInner() {
     }
   };
 
-
   // handling the logout of a user
   const handleLogout = async () => {
     try {
@@ -1046,9 +1062,24 @@ function ChatPageInner() {
 
             {/* Right section: Notification + Profile */}
             <div className="flex items-center space-x-4">
-              <Link href="/profile">
+              {/* <Link href="/profile">
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center cursor-pointer">
                   <User className="w-5 h-5 text-white" />
+                </div>
+              </Link> */}
+              <Link href="/profile">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-300 cursor-pointer">
+                  {user?.image ? (
+                    <img
+                      src={user.image}
+                      alt="User"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </div>
               </Link>
             </div>

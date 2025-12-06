@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
+import { getSession } from "next-auth/react";
 
 export default function ProfilePage() {
   const [formData, setFormData] = useState({
@@ -34,9 +35,25 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const router = useRouter();
+  const [user, setUser] = useState({ name: "", image: "" });
 
   useEffect(() => {
     fetchProfile();
+  }, []);
+  useEffect(() => {
+    const checkAuth = async () => {
+      const session = await getSession();
+      if (!session || !session.user) {
+        router.push("/login");
+        return;
+      } else {
+        setUser({
+          name: session.user.name || "",
+          image: session.user.image || "",
+        });
+      }
+    };
+    checkAuth();
   }, []);
 
   const fetchProfile = async () => {
@@ -95,7 +112,6 @@ export default function ProfilePage() {
     });
   };
 
- 
   const handleLogout = async () => {
     try {
       const res = await fetch("/api/logout", { method: "POST" });
@@ -211,13 +227,28 @@ export default function ProfilePage() {
             </div>
             {/* Right section: Notification + Profile */}
             <div className="flex items-center space-x-4">
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
+              {/* <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
                 <Bell className="w-6 h-6 text-gray-600" />
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
-              <Link href="/profile">
+              </button> */}
+              {/* <Link href="/profile">
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center cursor-pointer">
                   <User className="w-5 h-5 text-white" />
+                </div>
+              </Link> */}
+              <Link href="/profile">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-300 cursor-pointer">
+                  {user?.image ? (
+                    <img
+                      src={user.image}
+                      alt="User"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </div>
               </Link>
             </div>
@@ -311,8 +342,9 @@ export default function ProfilePage() {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300"
+                      className="w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="Enter your email address"
+                      disabled
                     />
                   </div>
 

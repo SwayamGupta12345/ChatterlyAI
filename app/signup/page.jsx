@@ -28,6 +28,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -53,9 +54,13 @@ export default function SignupPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    
     setError("");
-
+    if (!agreed) {
+      setError("You must agree to the Terms of Use and Privacy Policy.");
+      setIsLoading(false);
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
@@ -186,13 +191,14 @@ export default function SignupPage() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className={`w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pr-12"
-                   ${password.length === 0
-                      ? "border border-gray-200 focus:ring-purple-500"
-                      : allGood
-                        ? "border border-green-500 focus:ring-green-500"
-                        : "border border-red-500 focus:ring-red-500"
-                    }`}
+                  className={`w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pr-12
+                   ${
+                     password.length === 0
+                       ? "border border-gray-200 focus:ring-purple-500"
+                       : allGood
+                       ? "border border-green-500 focus:ring-green-500"
+                       : "border border-red-500 focus:ring-red-500"
+                   }`}
                   placeholder="Create a password"
                 />
                 <button
@@ -225,12 +231,13 @@ export default function SignupPage() {
                   onChange={handleChange}
                   required
                   className={`w-full px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pr-12"
-                   ${confirmPassword.length === 0
-                      ? "border border-gray-200 focus:ring-purple-500"
-                      : passwordChecks.match
-                        ? "border border-green-500 focus:ring-green-500"
-                        : "border border-red-500 focus:ring-red-500"
-                    }`}
+                   ${
+                     confirmPassword.length === 0
+                       ? "border border-gray-200 focus:ring-purple-500"
+                       : passwordChecks.match
+                       ? "border border-green-500 focus:ring-green-500"
+                       : "border border-red-500 focus:ring-red-500"
+                   }`}
                   placeholder="Confirm your password"
                 />
                 <button
@@ -276,6 +283,8 @@ export default function SignupPage() {
             <div className="flex items-center">
               <input
                 type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
                 required
                 className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
               />
@@ -286,8 +295,8 @@ export default function SignupPage() {
                   className="text-purple-600 hover:text-purple-700 transition-colors"
                 >
                   Terms of Use
-                </a>
-                {" "}and{" "}
+                </a>{" "}
+                and{" "}
                 <a
                   href="/privacy-policy"
                   className="text-purple-600 hover:text-purple-700 transition-colors"
@@ -300,7 +309,7 @@ export default function SignupPage() {
             {/* submit */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !agreed}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isLoading ? (

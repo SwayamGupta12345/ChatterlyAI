@@ -118,18 +118,18 @@ export default function LandingPage() {
             </div>
 
             <div className="hidden md:flex items-center space-x-8">
-              <a
+              {/* <a
                 href="#features"
                 className="text-gray-700 hover:text-purple-600 transition-colors"
               >
                 Features
-              </a>
-              <a
+              </a> */}
+              {/* <a
                 href="#testimonials"
                 className="text-gray-700 hover:text-purple-600 transition-colors"
               >
                 Testimonials
-              </a>
+              </a> */}
               <Link
                 href="/login"
                 className="text-purple-600 hover:text-purple-700 transition-colors"
@@ -161,7 +161,7 @@ export default function LandingPage() {
         {isMenuOpen && (
           <div className="md:hidden bg-white/90 backdrop-blur-md border-t border-white/20">
             <div className="px-4 py-4 space-y-4">
-              <a
+              {/* <a
                 href="#features"
                 className="block text-gray-700 hover:text-purple-600"
               >
@@ -172,8 +172,8 @@ export default function LandingPage() {
                 className="block text-gray-700 hover:text-purple-600"
               >
                 Testimonials
-              </a>
-              <Link href="/login" className="block text-purple-600">
+              </a> */}
+              <Link href="/login" className="flex justify-center text-purple-600">
                 Login
               </Link>
               <Link
@@ -259,7 +259,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section
+      {/* <section
         id="testimonials"
         className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-purple-100 to-blue-100"
       >
@@ -307,7 +307,7 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
       <footer className="bg-gradient-to-r from-gray-900 to-purple-900 text-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8">

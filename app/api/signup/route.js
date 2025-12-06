@@ -38,6 +38,9 @@ export async function POST(req) {
       name: name,
       chats_arr: [],
       frnd_arr: [],
+      isOnline: false,
+      lastSeen: null,
+
     });
 
     // Create JWT token

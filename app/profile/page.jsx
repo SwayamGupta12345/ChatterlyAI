@@ -83,7 +83,7 @@ export default function ProfilePage() {
   };
 
   // --- PASSWORD VALIDATION ---
-  const { newPass: password = "", confirmPass = "" } = formData;
+  const { newPass: password = "", confirmPass = "" , oldPass = ""} = formData;
 
   const passwordChecks = {
     length: password.length >= 8,

@@ -135,7 +135,7 @@ function ChatPageInner() {
         })
       );
 
-      socket.current?.emit("request-online-users");
+      // socket.current?.emit("request-online-users");
 
       // ✅ Prefer chatboxId from URL, else fallback to last stored
       const chatboxIdFromUrl = searchParams.get("chatboxId");
@@ -226,34 +226,11 @@ function ChatPageInner() {
         transports: ["websocket"], // ensure real-time connection
       });
 
-      socket.current.emit("join-room", userEmail);
+      socket.current.emit("online-room", userEmail);
 
-      // ✅ Listen globally once
-      // socket.current.on("chat-created", ({ chatbox }) => {
-      //   console.log("📩 Chat created received:", chatbox);
-      //   setFriends((prev) => {
-      //     // Prevent duplicate
-      //     if (prev.some((f) => f.chatbox_id === chatbox.chatbox_id))
-      //       return prev;
-
-      //     // Fix Name mismatch on other user
-      //     const correctedFriend = {
-      //       ...chatbox,
-      //       name: chatbox.email === userEmail ? selectedFriend?.name : chatbox.name,
-      //       pinned: false,
-      //     };
-
-      //     const updated = [...prev, correctedFriend];
-
-      //     return updated.sort((a, b) => {
-      //       if (a.pinned && !b.pinned) return -1;
-      //       if (!a.pinned && b.pinned) return 1;
-      //       return new Date(b.lastModified) - new Date(a.lastModified);
-      //     });
-      //   });
-
-      // });
-
+      // 2️⃣ After online registered, request full list
+      socket.current.emit("request-online-users");
+      
       socket.current.on("user-online-status", ({ email, isOnline }) => {
         setOnlineMap((prev) => ({
           ...prev,
@@ -271,6 +248,7 @@ function ChatPageInner() {
         });
       });
 
+      socket.current.emit("join-chat-room", chatboxId);
       socket.current.on("chat-created", async () => {
         const res = await fetch(`/api/get-friends?email=${userEmail}`);
         const data = await res.json();
@@ -942,7 +920,7 @@ function ChatPageInner() {
                           <span>
                             {frnd.name
                               ? frnd.name.length > 12
-                                ? frnd.name.slice(0, 12)+"..."
+                                ? frnd.name.slice(0, 12) + "..."
                                 : frnd.name
                               : frnd.email}
                           </span>

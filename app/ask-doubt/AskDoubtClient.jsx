@@ -1586,7 +1586,7 @@ export default function AskDoubtClient() {
                       className={`px-4 py-3 rounded-xl shadow-md break-words ${
                         msg.role === "user"
                           ? "bg-purple-100 text-pretty rounded-br-none max-w-[70%] sm:max-w-md"
-                          : "bg-blue-100 rounded-bl-none max-w-[90%] sm:max-w-2xl overflow-x-auto"
+                          : "bg-blue-200 rounded-bl-none max-w-[90%] sm:max-w-2xl overflow-x-auto"
                       }`}
                     >
                       <div
@@ -1709,33 +1709,45 @@ export default function AskDoubtClient() {
                                   </a>
                                 ),
                                 li: ({ children }) => <li>{children}</li>,
-                                code: ({ inline, children }) =>
-                                  inline ? (
-                                    <code
-                                      style={{
-                                        backgroundColor: "#333",
-                                        padding: "2px 6px",
-                                        borderRadius: "4px",
-                                      }}
-                                    >
-                                      {children}
-                                    </code>
-                                  ) : (
+                                code: ({ inline, children, className }) => {
+                                  const text = Array.isArray(children)
+                                    ? children.join("")
+                                    : String(children);
+
+                                  // If it's inline OR there is no language + no newline → inline code
+                                  const isInlineFenced =
+                                    !inline &&
+                                    !className && // means ``` not ```js or similar
+                                    !text.includes("\n");
+
+                                  if (inline || isInlineFenced) {
+                                    return (
+                                      <code
+                                        style={{
+                                          padding: "2px 6px",
+                                          borderRadius: "4px",
+                                          color: "black",
+                                          fontSize: "0.95em",
+                                        }}
+                                        className="bg-blue-300"
+                                      >
+                                        {text}
+                                      </code>
+                                    );
+                                  }
+
+                                  // Multi-line block
+                                  return (
                                     <div
                                       style={{
                                         position: "relative",
                                         marginBottom: "1rem",
                                       }}
                                     >
-                                      <pre className="bg-blue-500 text-white p-4 rounded-md overflow-x-auto text-sm">
-                                        <code>
-                                          {typeof children === "string"
-                                            ? children
-                                            : Array.isArray(children)
-                                            ? children.join("")
-                                            : ""}
-                                        </code>
+                                      <pre className="bg-blue-400 text-white p-4 rounded-md overflow-x-auto text-sm">
+                                        <code>{text}</code>
                                       </pre>
+
                                       <div
                                         style={{
                                           position: "absolute",
@@ -1746,15 +1758,8 @@ export default function AskDoubtClient() {
                                         }}
                                       >
                                         <button
-                                          onClick={() =>
-                                            handleCopy(
-                                              Array.isArray(children)
-                                                ? children.join("")
-                                                : children
-                                            )
-                                          }
+                                          onClick={() => handleCopy(text)}
                                           title="Copy"
-                                          className="action-button"
                                           style={{
                                             background: "none",
                                             color: "white",
@@ -1764,12 +1769,10 @@ export default function AskDoubtClient() {
                                         >
                                           <FaCopy />
                                         </button>
+
                                         <button
-                                          onClick={() =>
-                                            sendToWhatsApp(children)
-                                          }
+                                          onClick={() => sendToWhatsApp(text)}
                                           title="Share via WhatsApp"
-                                          className="action-button"
                                           style={{
                                             background: "none",
                                             color: "white",
@@ -1779,10 +1782,10 @@ export default function AskDoubtClient() {
                                         >
                                           <FaWhatsapp />
                                         </button>
+
                                         <button
-                                          onClick={() => sendToGmail(children)}
+                                          onClick={() => sendToGmail(text)}
                                           title="Send via Email"
-                                          className="action-button"
                                           style={{
                                             background: "none",
                                             color: "white",
@@ -1794,7 +1797,8 @@ export default function AskDoubtClient() {
                                         </button>
                                       </div>
                                     </div>
-                                  ),
+                                  );
+                                },
                                 table: ({ children }) => (
                                   <div style={{ overflowX: "auto" }}>
                                     <table className="min-w-[500px] table-auto border border-gray-400 text-sm">
@@ -1883,45 +1887,59 @@ export default function AskDoubtClient() {
                                 </button>
                               </>
                             )}
-                            {msg.role !== "user" && msg.isImg == false && (
-                              <button
-                                onClick={() => handleCopy(msg.text)}
-                                title="Copy message"
-                                className="flex items-center gap-1 text-gray-600 hover:text-purple-600 transition"
-                              >
-                                <FaCopy />
-                                <span>Copy</span>
-                              </button>
-                            )}
-                            {msg.role !== "user" && msg.isImg == false && (
-                              <button
-                                onClick={() => speakText(msg.text)}
-                                title={
-                                  isPaused
-                                    ? "Resume speaking"
-                                    : isSpeaking
-                                    ? "Pause speaking"
-                                    : "Play"
-                                }
-                                className="flex items-center gap-1 text-green-600 hover:text-green-800 transition"
-                              >
-                                {isSpeaking ? (
-                                  isPaused ? (
-                                    <FaPlay className="w-4 h-4" />
+                            {msg.role !== "user" && !msg.isImg && (
+                              <div className="flex items-center gap-4 mt-2">
+                                {/* Copy */}
+                                <button
+                                  onClick={() => handleCopy(msg.text)}
+                                  title="Copy message"
+                                  className="flex items-center gap-1 text-gray-600 hover:text-purple-600 transition"
+                                >
+                                  <FaCopy className="w-4 h-4" />
+                                  <span className="text-sm">Copy</span>
+                                </button>
+
+                                {/* WhatsApp */}
+                                <button
+                                  onClick={() => sendToWhatsApp(msg.text)}
+                                  title="Share via WhatsApp"
+                                  className="flex items-center gap-1 text-green-600 hover:text-green-700 transition"
+                                >
+                                  <FaWhatsapp className="w-4 h-4" />
+                                  <span className="text-sm">WhatsApp</span>
+                                </button>
+
+                                {/* Speak / Pause */}
+                                <button
+                                  onClick={() => speakText(msg.text)}
+                                  title={
+                                    isPaused
+                                      ? "Resume speaking"
+                                      : isSpeaking
+                                      ? "Pause speaking"
+                                      : "Play"
+                                  }
+                                  className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition"
+                                >
+                                  {isSpeaking ? (
+                                    isPaused ? (
+                                      <FaPlay className="w-4 h-4" />
+                                    ) : (
+                                      <FaPause className="w-4 h-4" />
+                                    )
                                   ) : (
-                                    <FaPause className="w-4 h-4" />
-                                  )
-                                ) : (
-                                  <FaVolumeUp className="w-4 h-4" />
-                                )}
-                                <span className="text-sm">
-                                  {isPaused
-                                    ? "Resume"
-                                    : isSpeaking
-                                    ? "Pause"
-                                    : "Play"}
-                                </span>
-                              </button>
+                                    <FaVolumeUp className="w-4 h-4" />
+                                  )}
+
+                                  <span className="text-sm">
+                                    {isPaused
+                                      ? "Resume"
+                                      : isSpeaking
+                                      ? "Pause"
+                                      : "Play"}
+                                  </span>
+                                </button>
+                              </div>
                             )}
                           </div>
                         )}

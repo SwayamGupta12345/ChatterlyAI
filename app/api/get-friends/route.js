@@ -22,7 +22,7 @@ export async function GET(req) {
       if (f && f.chatbox_id) {
         frndMap[f.chatbox_id.toString()] = {
           email: f.email,
-          nickname: f.name || f.nickname || null,
+          name: f.name || null,
           lastModified: f.lastModified || new Date(),
         };
       }
@@ -45,7 +45,7 @@ export async function GET(req) {
     return {
       chatbox_id: chat._id,
       email: friendEmail,
-      nickname: fromArr?.nickname || null, // ✅ Friend name stored in DB
+      name: fromArr?.name || null, // ✅ Friend name stored in DB
       lastModified: fromArr?.lastModified || chat.lastModified,
       pinned: chat.pinned || false, // ✅ Added field
     };

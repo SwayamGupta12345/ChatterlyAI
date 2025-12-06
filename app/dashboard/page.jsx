@@ -67,7 +67,7 @@ export default function Dashboard() {
   }, [userEmail]);
 
   const filteredFriends = friends.filter((f) =>
-    (f.nickname || f.email).toLowerCase().includes(searchFriend.toLowerCase())
+    (f.name || f.email).toLowerCase().includes(searchFriend.toLowerCase())
   );
 
   const filteredAIChats = aiChats.filter((c) =>
@@ -287,7 +287,7 @@ export default function Dashboard() {
                     onClick={() => router.push(`/chat?chatboxId=${f.chatbox_id}`)}
                     className="p-3 bg-white/50 hover:bg-white/70 cursor-pointer rounded-xl border border-white/20 flex justify-between items-center"
                   >
-                    <span className="font-medium">{f.nickname || f.email}</span>
+                    <span className="font-medium">{f.name || f.email}</span>
                     <span className="text-xs text-gray-400">
                       {new Date(f.lastModified).toLocaleDateString()}
                     </span>

@@ -17,6 +17,7 @@ import {
   Pin,
   UserPlus,
 } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 import { TiPinOutline } from "react-icons/ti";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -58,6 +59,11 @@ function ChatPageInner() {
   const [friends, setFriends] = useState([]);
   const [userEmail, setUserEmail] = useState("");
   const [user, setUser] = useState({ name: "", image: "" });
+  //text message by speaking user
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const [liveTranscript, setLiveTranscript] = useState("");
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const socket = useRef(null);
@@ -241,7 +247,7 @@ function ChatPageInner() {
       socket.current.on("online-users-list", (list) => {
         setOnlineMap((prev) => {
           const newMap = { ...prev };
-          list.forEach(email => {
+          list.forEach((email) => {
             newMap[email] = true;
           });
           return newMap;
@@ -645,7 +651,74 @@ function ChatPageInner() {
     setChatboxId(data.chatbox._id);
     setMessages(fullMessages); // fullMessages is an array of complete message objects
   };
+  useEffect(() => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    if (!SpeechRecognition) {
+      // console.warn("Speech Recognition not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = true; // for live preview
+    recognition.continuous = false; // stops after one pause in speech
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      let final = "";
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          final += transcript + " ";
+        } else {
+          interim += transcript + " ";
+        }
+      }
+
+      if (final) {
+        setInput((prev) => prev + " " + final);
+      }
+      setLiveTranscript(interim);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+      setLiveTranscript(""); // clear interim preview
+    };
+    recognition.onerror = (e) => {
+      // Chrome gives empty {} sometimes, so normalize
+      const error = e.error || "";
+
+      // Ignore harmless "no-speech" and "aborted" events
+      if (error === "no-speech" || error === "aborted") {
+        setListening(false);
+        setLiveTranscript("");
+        return;
+      }
+
+      // Real errors only
+      console.error("Speech Recognition Error:", e);
+      setListening(false);
+      setLiveTranscript("");
+    };
+
+    recognitionRef.current = recognition;
+  }, []);
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (listening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
+      setLiveTranscript("");
+    }
+
+    setListening((prev) => !prev);
+  };
   const sendMessage = () => {
     if (!input.trim() || !chatboxId || !userEmail) return;
     const message = {
@@ -790,8 +863,9 @@ function ChatPageInner() {
       {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0`}
+        className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0`}
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-8">
@@ -906,13 +980,15 @@ function ChatPageInner() {
                         setEditingFriendId(frnd.chatbox_id);
                         setEditedFriendName(frnd.name || "");
                       }}
-                      className={`w-full text-left px-4 py-2 rounded-xl transition-colors transform duration-300 ${selectedFriend?.chatbox_id === frnd.chatbox_id
-                        ? "bg-purple-200 text-purple-800"
-                        : "hover:bg-gray-100 text-gray-700"
-                        } ${updatedChatboxId === frnd.chatbox_id
+                      className={`w-full text-left px-4 py-2 rounded-xl transition-colors transform duration-300 ${
+                        selectedFriend?.chatbox_id === frnd.chatbox_id
+                          ? "bg-purple-200 text-purple-800"
+                          : "hover:bg-gray-100 text-gray-700"
+                      } ${
+                        updatedChatboxId === frnd.chatbox_id
                           ? "scale-[1.03] shadow-md"
                           : ""
-                        }`}
+                      }`}
                     >
                       <span className="block truncate max-w-[75%]  items-center gap-1">
                         {/* <span>{frnd.name || frnd.email}</span> */}
@@ -928,7 +1004,6 @@ function ChatPageInner() {
                             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                           )}
                         </span>
-
                       </span>
                     </button>
                   )}
@@ -953,10 +1028,11 @@ function ChatPageInner() {
                           prev === frnd.chatbox_id ? null : frnd.chatbox_id
                         );
                       }}
-                      className={`p-1 rounded transition-colors ${menuOpenId === frnd.chatbox_id
-                        ? "bg-gray-200"
-                        : "hover:bg-gray-100"
-                        }`}
+                      className={`p-1 rounded transition-colors ${
+                        menuOpenId === frnd.chatbox_id
+                          ? "bg-gray-200"
+                          : "hover:bg-gray-100"
+                      }`}
                     >
                       <EllipsisVertical size={16} />
                     </button>
@@ -1093,23 +1169,25 @@ function ChatPageInner() {
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex ${msg.senderEmail === userEmail
-                    ? "justify-end"
-                    : "justify-start"
-                    }`}
+                  className={`flex ${
+                    msg.senderEmail === userEmail
+                      ? "justify-end"
+                      : "justify-start"
+                  }`}
                 >
                   <div
-                    className={`px-4 py-3 rounded-xl shadow-md max-w-[100vw] md:max-w-md ${msg.senderEmail === userEmail
-                      ? "bg-purple-100 text-right rounded-br-none"
-                      : "bg-blue-100 text-left rounded-bl-none self-start"
-                      }`}
+                    className={`px-4 py-3 rounded-xl shadow-md max-w-[100vw] md:max-w-md ${
+                      msg.senderEmail === userEmail
+                        ? "bg-purple-100 text-right rounded-br-none"
+                        : "bg-blue-100 text-left rounded-bl-none self-start"
+                    }`}
                   >
                     <div className="text-xs font-semibold text-gray-600 mb-1">
                       {msg.senderEmail === userEmail
                         ? "You"
                         : selectedFriend?.name ||
-                        selectedFriend?.email ||
-                        "Friend"}
+                          selectedFriend?.email ||
+                          "Friend"}
                     </div>
 
                     <div className="markdown-content text-sm text-gray-800 max-w-[90vw] md:max-w-md overflow-x-auto whitespace-pre-wrap break-words">
@@ -1192,8 +1270,8 @@ function ChatPageInner() {
                                       {typeof children === "string"
                                         ? children
                                         : Array.isArray(children)
-                                          ? children.join("")
-                                          : ""}
+                                        ? children.join("")
+                                        : ""}
                                     </code>
                                   </pre>
                                   <div
@@ -1334,20 +1412,86 @@ function ChatPageInner() {
               <div className="flex items-center gap-2"> */}
             <div className="fixed bottom-0 left-0 right-0 lg:ml-64 bg-white/90 backdrop-blur-lg border-t border-white/20 px-6 py-4 z-40">
               <div className="flex items-center gap-2 max-w-7xl mx-auto">
-                <input
+                <textarea
                   ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onInput={(e) => {
+                    e.target.style.height = "auto";
+                    e.target.style.height = `${e.target.scrollHeight}px`;
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       sendMessage(); // only sends once
+                      // RESET SIZE AFTER SEND
+                      const el = inputRef.current;
+                      el.style.height = "auto"; // resets back to initial (rows={3})
                     }
                   }}
                   placeholder="Type your message..."
-                  className="flex-1 px-4 py-2 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  rows={1}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[4rem] max-h-[12rem] "
                 />
+                <>
+                  {/* Mic toggle button */}
+                  <button
+                    onClick={toggleListening}
+                    className={`p-2 rounded-xl border transition ${
+                      listening
+                        ? "bg-red-500 text-white"
+                        : "bg-white text-black"
+                    }`}
+                  >
+                    {listening ? (
+                      <MicOff className="w-5 h-5" />
+                    ) : (
+                      <Mic className="w-5 h-5" />
+                    )}
+                  </button>
+
+                  {/* Listening modal (NOT inside button) */}
+                  {listening && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm text-center">
+                      <div className="bg-white rounded-2xl shadow-2xl px-6 py-8 w-[90%] max-w-sm relative flex flex-col items-center gap-4">
+                        {/* Close button */}
+                        <button
+                          onClick={toggleListening}
+                          className="absolute top-3 right-3 p-2 bg-gray-100 hover:bg-red-100 rounded-full"
+                          title="Stop Listening"
+                        >
+                          <X className="w-5 h-5 text-red-500" />
+                        </button>
+
+                        {/* Mic animation */}
+                        <div className="relative mt-2">
+                          <div className="absolute h-16 w-16 bg-green-400 opacity-75 rounded-full animate-ping"></div>
+                          <div className="h-16 w-16 bg-green-600 rounded-full flex items-center justify-center relative z-10">
+                            <Mic className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+
+                        <p className="text-gray-600 text-sm font-medium">
+                          Listening…
+                        </p>
+
+                        {liveTranscript && (
+                          <p className="text-gray-700 text-sm bg-gray-100 rounded-md px-4 py-2 w-full text-center">
+                            {liveTranscript}
+                          </p>
+                        )}
+
+                        <button
+                          onClick={toggleListening}
+                          className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 transition"
+                        >
+                          Stop & Continue
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
                 <button
                   onClick={sendMessage}
                   className={`bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full transition ${!input.trim()

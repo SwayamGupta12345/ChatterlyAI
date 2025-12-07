@@ -33,42 +33,6 @@ export async function GET(req) {
   }
 }
 
-// export async function PUT(req) {
-//   try {
-//     const session = await getServerSession(authOptions)
-
-//     if (!session?.user?.email) {
-//       return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
-//     }
-
-//     const body = await req.json()
-//     const { name, email, oldPass, newPass} = body
-
-//     if (!oldPass) {
-//       return NextResponse.json({ message: "Old Password is required." }, { status: 400 })
-//     }
-//      if (!newPass) {
-//       return NextResponse.json({ message: "New Password is required." }, { status: 400 })
-//     }
-
-//     const password = await bcrypt.hash(newPass, 10);
-    
-//     const { db } = await connectToDatabase()
-//     const result = await db.collection("users").updateOne(
-//       { email: session.user.email },
-//       { $set: { name, email, password, nickname } }
-//     )
-
-//     if (result.modifiedCount === 0) {
-//       return NextResponse.json({ message: "No changes made" }, { status: 400 })
-//     }
-
-//     return NextResponse.json({ message: "Profile updated successfully" })
-//   } catch (error) {
-//     console.error("Profile update error:", error)
-//     return NextResponse.json({ message: "Internal server error" }, { status: 500 })
-//   }
-// }
 export async function PUT(req) {
   try {
     const session = await getServerSession(authOptions);

@@ -5,7 +5,7 @@ import { ObjectId } from "mongodb";
 export async function POST(req) {
   const { db } = await connectToDatabase();
   const { userEmail, friendEmail, friendName } = await req.json();
- 
+
   // Validate input
   if (!userEmail || !friendEmail || !friendName) {
     return NextResponse.json(
@@ -53,16 +53,14 @@ export async function POST(req) {
   const result = await db.collection("chatboxes").insertOne(chatbox);
   const insertedId = result.insertedId;
 
-  //console.log(`Friend Name: {friendName}, Friend Nickname: {friend.nickname}`);
   // ✅ Update both users' frnd_arr with new structure
   const friendEntryForUser = {
     chatbox_id: insertedId,
     email: actualFriendEmail,
-    name: friendName || "", // Use provided name or friend's nickname
+    name: friendName || "", // Use provided name or friend's name
     lastModified: new Date(),
   };
   const me = await db.collection("users").findOne({ email: userEmail });
-  //console.log(`user Name: {me.Name}, user Nickname: {me.nickname}`);
 
   const friendEntryForFriend = {
     chatbox_id: insertedId,
@@ -90,8 +88,8 @@ export async function POST(req) {
     success: true,
     chatbox: { ...chatbox, _id: insertedId },
     friend: {
-    email: friend.email,
-    name: friendName
-  },
+      email: friend.email,
+      name: friendName,
+    },
   });
 }

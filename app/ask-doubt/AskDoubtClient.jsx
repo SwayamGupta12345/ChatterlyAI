@@ -1482,11 +1482,14 @@ export default function AskDoubtClient() {
                 {/* Access rules */}
                 <div className="text-xs text-gray-600 mb-2">Access Rules</div>
                 <div className="flex items-center gap-2 text-sm text-gray-700 mb-4">
-                  <Lock className="w-4 h-4 text-gray-500" />
+                  <Lock className="w-5 h-4 text-gray-500" />
                   <span>
                     Restricted — Only people with access can the chat open with
                     the link
                   </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-black-700 mb-4">
+                  <span>Share Via: </span>
                 </div>
 
                 {/* Buttons */}
@@ -1526,9 +1529,20 @@ export default function AskDoubtClient() {
                       <div className="flex gap-3 w-full sm:w-auto">
                         <button
                           onClick={() => handleSendShare("ChatterlyAI")}
+                          style={{ backgroundColor: "#D8B4FE" }}
+                          onMouseOver={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#DBAFFF")
+                          }
+                          onMouseOut={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#D8B4FE")
+                          }
                           className="flex items-center justify-center text-sm bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition w-full sm:w-auto"
                         >
-                          <Mail className="w-4 h-4 mr-2" />
+                          <img
+                            src="/chatterly_logo.png" // make sure this path is correct in your public folder
+                            alt="ChatterlyAI"
+                            className="w-4 h-4 mr-2  rounded-md"
+                          />
                           OK
                         </button>
 
@@ -1536,7 +1550,8 @@ export default function AskDoubtClient() {
                           onClick={() => setShowShare(false)}
                           className="flex items-center justify-center text-sm bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition w-full sm:w-auto"
                         >
-                          Cancel
+                          <X className="w-5 h-4 mr-1" />
+                          <span>Cancel</span>
                         </button>
                       </div>
                     </div>
@@ -1989,34 +2004,45 @@ export default function AskDoubtClient() {
                     ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onInput={(e) => {
+                      e.target.style.height = "auto";
+                      e.target.style.height = `${e.target.scrollHeight}px`;
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        // sendMessage();
                         handleSubmit();
+                        // RESET SIZE AFTER SEND
+                        const el = inputRef.current;
+                        el.style.height = "auto"; // resets back to initial (rows={3})
                       }
                     }}
                     placeholder="Type or speak your message. Use /img at the start to generate images."
                     rows={2}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[4rem] max-h-[12rem] "
                   />
-                  <button
-                    onClick={toggleListening}
-                    className={`p-2 rounded-xl border transition ${
-                      listening
-                        ? "bg-red-500 text-white"
-                        : "bg-white text-black"
-                    }`}
-                  >
-                    {listening ? (
-                      <MicOff className="w-5 h-5" />
-                    ) : (
-                      <Mic className="w-5 h-5" />
-                    )}
+                  <>
+                    {/* Mic toggle button */}
+                    <button
+                      onClick={toggleListening}
+                      className={`p-2 rounded-xl border transition ${
+                        listening
+                          ? "bg-red-500 text-white"
+                          : "bg-white text-black"
+                      }`}
+                    >
+                      {listening ? (
+                        <MicOff className="w-5 h-5" />
+                      ) : (
+                        <Mic className="w-5 h-5" />
+                      )}
+                    </button>
+
+                    {/* Listening modal (NOT inside button) */}
                     {listening && (
                       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm text-center">
                         <div className="bg-white rounded-2xl shadow-2xl px-6 py-8 w-[90%] max-w-sm relative flex flex-col items-center gap-4">
-                          {/* Stop mic button (X icon) */}
+                          {/* Close button */}
                           <button
                             onClick={toggleListening}
                             className="absolute top-3 right-3 p-2 bg-gray-100 hover:bg-red-100 rounded-full"
@@ -2025,7 +2051,7 @@ export default function AskDoubtClient() {
                             <X className="w-5 h-5 text-red-500" />
                           </button>
 
-                          {/* Microphone animation */}
+                          {/* Mic animation */}
                           <div className="relative mt-2">
                             <div className="absolute h-16 w-16 bg-green-400 opacity-75 rounded-full animate-ping"></div>
                             <div className="h-16 w-16 bg-green-600 rounded-full flex items-center justify-center relative z-10">
@@ -2033,19 +2059,16 @@ export default function AskDoubtClient() {
                             </div>
                           </div>
 
-                          {/* Listening text */}
                           <p className="text-gray-600 text-sm font-medium">
                             Listening…
                           </p>
 
-                          {/* Live preview text */}
                           {liveTranscript && (
                             <p className="text-gray-700 text-sm bg-gray-100 rounded-md px-4 py-2 w-full text-center">
                               {liveTranscript}
                             </p>
                           )}
 
-                          {/* Manual stop */}
                           <button
                             onClick={toggleListening}
                             className="mt-4 bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600 transition"
@@ -2055,7 +2078,7 @@ export default function AskDoubtClient() {
                         </div>
                       </div>
                     )}
-                  </button>
+                  </>
                   <button
                     onClick={handleSubmit}
                     disabled={loading}

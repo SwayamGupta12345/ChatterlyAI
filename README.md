@@ -62,7 +62,7 @@ npm run dev
 
 ## 🧩 Contributing
 Contributions are welcome!  
-Start here → [`docs/CONTRIBUTING.md`](./docs/CONTRIBUTING.md)
+Start here → [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 
 If you're new:
 - Check `good-first-issues`

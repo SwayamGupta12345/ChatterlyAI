@@ -7,9 +7,10 @@ ChatterlyAI is a full-stack AI chat system built with a **Next.js frontend** and
 
 <img width="1919" height="907" alt="Screenshot 2025-12-09 211708" src="https://github.com/user-attachments/assets/61068eee-f25d-4bf7-8c5f-70d39a1365c0" />
 
-##What this project does
-This is an complete collabrative AI chatbot that can also be accessed, changed, worked-in and all the other by other person or friend in real-time with an complete chat system integrated directly into it so there there is not hassel in changing apps to send an ai message or refreshing everything just there and easey to handle
-
+## What this project does
+ChatterlyAI is a full-stack, collaborative AI chat platform that lets multiple users interact with AI in real-time.
+It integrates a Next.js frontend with three independent backend services, providing a seamless chat experience without switching apps or refreshing pages.
+The system is designed to be easy to set up and extend, allowing contributors to experiment, modify, and enhance the platform collaboratively.
 
 This repository contains:
 - The **official frontend**
@@ -37,27 +38,31 @@ Full architecture → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
 
 ## 🚀 Local Development
 
-If you want to run everything locally:
+If you want to run everything locally, start the services in this order: Backend 1 → Backend 2 → Agentic → Frontend.
 
 ### 1. Start Backend 1  
 Follow instructions here: https://github.com/SwayamGupta12345/ChatterlyAI-backend
 Can run on localhost: 3001
+Follow repo instructions: npm install → npm run dev → node server-socket.js
 
 ### 2. Start Backend 2  
 Follow instructions here: https://github.com/SwayamGupta12345/ChatterlyAI-backend-2
 Can run on localhost: 3002
+Follow repo instructions: npm install → npm run dev → node server-socket.js
 
 ### 3. Start Agentic Service 
 Follow instructions here: https://github.com/SwayamGupta12345/ChatterlyAI-agentic
 Can run on localhost: 8080
+Follow repo instructions: pip install -r requirements.txt → uvicorn backend:app 8080 --reload
 
 ### 4. Start Frontend  
 
 ## Environment Variables
 Can run on localhost: 3000
-Rename `.env.example` to `.env.local ` and fill values for local development:
+Rename `.env.example` to `.env.local` and fill values for local development:
+
 ```
-NEXTAUTH_URL=<localhost_url>
+NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=<your_nextauth_secret>
 MONGODB_URI=<your_mongodb_connection_string>
 MONGODB_DB=<your_database_name>
@@ -90,8 +95,8 @@ npm install
 ```bash
 npm run dev
 ```
-
-It doesn't matter on which port you run the services on just confirm proper urls are used in sending the API request and receiving the request ( PAY SPECIAL ATTENTION TO "CORS")
+### Note: Make sure backend URLs in your environment variables match the ports above. Check CORS settings if requests fail.
+It doesn't matter which ports you run the services on, just make sure URLs in your environment variables are correct and CORS settings allow requests.
 
 ---
 

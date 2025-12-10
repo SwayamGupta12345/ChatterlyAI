@@ -240,7 +240,7 @@ function ChatPageInner() {
       socket.current.on("user-online-status", ({ email, isOnline }) => {
         setOnlineMap((prev) => ({
           ...prev,
-          [email]: isOnline,
+          [email]: isOnline, 
         }));
       });
 
@@ -720,37 +720,49 @@ function ChatPageInner() {
 
     setListening((prev) => !prev);
   };
-  const sendMessage = () => {
+
+  const sendMessage = async () => {
     if (!input.trim() || !chatboxId || !userEmail) return;
-    const message = {
-      senderEmail: userEmail,
-      roomId: chatboxId,
-      text: input,
-    };
 
-    socket.current.emit("send-message", message); // send to server
-    // setMessages((prev) => [...prev, message]);
-    setInput("");
-    // ✅ Move this chat to top immediately on send
-    setFriends((prevFriends) => {
-      const updated = prevFriends.map((f) =>
-        f.chatbox_id === chatboxId
-          ? { ...f, lastModified: new Date().toISOString() }
-          : f
-      );
-
-      // 2️⃣ Apply pinned-aware sorting:
-      // - Pinned chats always on top
-      // - Unpinned chats sorted among themselves by lastModified (newest first)
-      const sorted = updated.sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1; // a is pinned → stays on top
-        if (!a.pinned && b.pinned) return 1; // b is pinned → stays below pinned
-        // both pinned or both unpinned → sort by lastModified
-        return new Date(b.lastModified) - new Date(a.lastModified);
-      });
-
-      return sorted;
+    const res = await fetch("/api/send-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        senderEmail: userEmail,
+        roomId: chatboxId,
+        text: input
+      }),
     });
+    
+    const result = await res.json();
+    if(res.ok && result.success){
+
+      const message = {
+        senderEmail: userEmail,
+        roomId: chatboxId,
+        text: input,
+      };
+  
+      socket.current.emit("send-message", message);
+      setInput("");
+      setFriends((prevFriends) => {
+        const updated = prevFriends.map((f) =>
+          f.chatbox_id === chatboxId
+            ? { ...f, lastModified: new Date().toISOString() }
+            : f
+        );
+
+        const sorted = updated.sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1; 
+          return new Date(b.lastModified) - new Date(a.lastModified);
+        });
+        return sorted;
+      });
+    }
+    else{
+      alert("Failed to send message.")
+    }
   };
 
   const handleEditMessage = (index) => {
@@ -779,7 +791,6 @@ function ChatPageInner() {
       setEditingIndex(null);
       setEditingText("");
 
-      // ✅ Emit socket event to update other user
       socket.current?.emit("edit-message", {
         messageId: updatedMsg._id,
         newText: editingText,

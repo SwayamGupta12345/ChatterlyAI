@@ -37,7 +37,7 @@ ChatterlyAI consists of **4 repositories working together**:
 | Service | Repo Link | Tech | Deploy |
 |--------|-----------|------|--------|
 | Frontend (Main) | https://github.com/rishugoyal805/ChatterlyAI.git | Next.js | Vercel |
-| Backend API | https://github.com/rishugoyal805/ChatterlyAi_Backend_1.git | Node.js | Render |
+| Backend API | https://github.com/rishugoyal805/ChatterlyAI_Backend_1.git | Node.js | Render |
 | Secondary Backend | https://github.com/rishugoyal805/ChatterlyAI_Backend_2.git | Node.js | Render |
 | Agentic Backend | https://github.com/rishugoyal805/ChatterlyAI_Agentic.git | Python/CrewAI | Render |
 

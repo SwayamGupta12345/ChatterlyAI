@@ -30,7 +30,7 @@ import { RiEditLine } from "react-icons/ri";
 import { getSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function AskDoubtPage() {
+export default function AskDoubtPage({ isSidebarOpen, setIsSidebarOpen }) {
   return (
     <Suspense
       fallback={
@@ -872,8 +872,17 @@ function ChatPageInner() {
   }, [isSidebarOpen]);
 
   return (
+    // <Suspense
+    //   fallback={
+    //     <FallbackLayout
+    //       isSidebarOpen={isSidebarOpen}
+    //       setIsSidebarOpen={setIsSidebarOpen}
+    //     />
+    //   }
+    // >
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 relative">
       {/* Sidebar */}
+
       <div
         ref={sidebarRef}
         className={`fixed left-0 top-0 h-full w-64 bg-white/80 backdrop-blur-md border-r border-white/20 z-50 transform transition-transform duration-300 ${
@@ -1624,5 +1633,6 @@ function ChatPageInner() {
         </div>
       )}
     </div>
+    // </Suspense>
   );
 }

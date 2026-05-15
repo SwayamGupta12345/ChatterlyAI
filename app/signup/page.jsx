@@ -172,7 +172,7 @@ export default function SignupPage() {
               ) : (
                 <>
                   <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/2048px-Google_%22G%22_logo.svg.png"
+                    src="google-logo.png"
                     alt="Google"
                     className="w-5 h-5 mr-2"
                   />
